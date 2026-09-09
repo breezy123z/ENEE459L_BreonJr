@@ -1,0 +1,14 @@
+01 | MODULE MODEL
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: /proc/device-tree/model
+
+RAW INPUT (relevant lines):
+b'NVIDIA Jetson Orin Nano Engineering Reference Developer Kit Super\x00'
+
+PARSING / MATCH RULE:
+read_text(...).strip("\x00 \t\r\n")
+Remove trailing NUL bytes and surrounding whitespace; no regex.
+
+RESULT:
+NVIDIA Jetson Orin Nano Engineering Reference Developer Kit Super

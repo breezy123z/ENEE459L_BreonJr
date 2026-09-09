@@ -1,0 +1,30 @@
+06 | THERMAL ZONES
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: /sys/class/thermal/thermal_zone*/{type,temp}
+
+RAW INPUT (relevant lines):
+thermal_zone0: type='cpu-thermal', temp='51000'
+thermal_zone1: type='gpu-thermal', temp='51156'
+thermal_zone2: type='cv0-thermal', temp=None
+thermal_zone3: type='cv1-thermal', temp=None
+thermal_zone4: type='cv2-thermal', temp=None
+thermal_zone5: type='soc0-thermal', temp='50625'
+thermal_zone6: type='soc1-thermal', temp='51812'
+thermal_zone7: type='soc2-thermal', temp='50187'
+thermal_zone8: type='tj-thermal', temp='51781'
+
+PARSING / MATCH RULE:
+Glob thermal_zone*; read type and temp for each zone.
+temp_c = int(raw) / 1000
+Skip missing or invalid temperatures; value = max(temp_c).
+No regex. Sensors are sampled again for the result below.
+
+RESULT:
+thermal_zone0: 51.0 C
+thermal_zone1: 51.25 C
+thermal_zone5: 50.656 C
+thermal_zone6: 51.718 C
+thermal_zone7: 50.156 C
+thermal_zone8: 51.718 C
+Maximum: 51.718 C

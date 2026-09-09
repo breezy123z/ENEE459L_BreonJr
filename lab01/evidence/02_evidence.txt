@@ -1,0 +1,16 @@
+02 | TOTAL MEMORY
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: /proc/meminfo
+
+RAW INPUT (relevant lines):
+MemTotal:        7789952 kB
+
+PARSING / MATCH RULE:
+re.search(r"^MemTotal:\s+(\d+)\s+kB\s*$", raw, re.M)
+Group 1 captures digits; int(group(1)) preserves kB.
+
+RESULT:
+Full match: 'MemTotal:        7789952 kB'
+Group 1: '7789952'
+Integer value: 7789952 kB

@@ -1,0 +1,21 @@
+04 | NVME PRESENCE AND MODEL
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: /sys/block/nvme0n1 + /device/model
+
+RAW INPUT (relevant lines):
+Block entries: loop1, nvme0n1, zram5, zram3, loop8, zram1, loop6, loop4, loop2, loop0, zram4, loop9, zram2, loop7, zram0, loop5, loop3, loop10
+Model: 'K-RICARD NVME 256GB                     \n'
+
+PARSING / MATCH RULE:
+any(device.name == "nvme0n1" for device in devices)
+Read /sys/block/nvme0n1/device/model and strip whitespace.
+Presence is independent of the root mount; no regex.
+
+RESULT:
+{
+  "value": true,
+  "model": "K-RICARD NVME 256GB",
+  "source": "/sys/block/nvme0n1",
+  "status": "ok"
+}

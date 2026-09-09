@@ -1,0 +1,21 @@
+03 | ROOT FILESYSTEM
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: /proc/mounts
+
+RAW INPUT (relevant lines):
+/dev/nvme0n1p1 / ext4 rw,relatime 0 0
+
+PARSING / MATCH RULE:
+fields = line.split(); select fields[1] == "/"
+Device = fields[0]; decode any backslash-octal escapes.
+NVMe: re.fullmatch(r"/dev/nvme\d+n\d+(p\d+)?", device)
+SD:   re.fullmatch(r"/dev/mmcblk\d+(p\d+)?", device)
+
+RESULT:
+{
+  "value": "/dev/nvme0n1p1",
+  "kind": "nvme",
+  "source": "/proc/mounts",
+  "status": "ok"
+}

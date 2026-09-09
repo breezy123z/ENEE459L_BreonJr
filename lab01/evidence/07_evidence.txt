@@ -1,0 +1,17 @@
+07 | POWER MODE
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: nvpmodel -q
+
+RAW INPUT (relevant lines):
+NV Power Mode: 25W
+1
+
+PARSING / MATCH RULE:
+re.search(r"^NV Power Mode:\s*([^\r\n]+)\r?\n\s*(\d+)\s*$", raw, re.M)
+Group 1 = name; group 2 = numeric mode ID.
+
+RESULT:
+Group 1: '25W'
+Group 2: '1'
+mode_id = int(group(2)) = 1

@@ -1,0 +1,20 @@
+05 | PCIE CAPABILITY AND NEGOTIATION
+Captured on Jetson: 2026-09-09T13:55:33
+
+SOURCE: lspci -vv (NVMe endpoint)
+
+RAW INPUT (relevant lines):
+0004:01:00.0 Non-Volatile memory controller: Silicon Motion, Inc. SM2263EN/SM2263XT SSD Controller (rev 03) (prog-if 02 [NVM Express])
+LnkCap:	Port #0, Speed 8GT/s, Width x4, ASPM L1, Exit Latency L1 <8us
+LnkSta:	Speed 8GT/s (ok), Width x4 (ok)
+
+PARSING / MATCH RULE:
+Select NVMe block, then LnkCap: and LnkSta: from that block.
+Speed regex: r"Speed\s+([\d.]+)GT/s"
+Width regex: r"Width\s+x(\d+)"
+Convert speed to float, width to int; 8.0 GT/s maps to Gen3.
+
+RESULT:
+Capability: {'raw': 'LnkCap:\tPort #0, Speed 8GT/s, Width x4, ASPM L1, Exit Latency L1 <8us', 'gts': 8.0, 'width': 4, 'gen': 3}
+Negotiated: {'raw': 'LnkSta:\tSpeed 8GT/s (ok), Width x4 (ok)', 'gts': 8.0, 'width': 4, 'gen': 3}
+link running at its full capability, Gen3 x4

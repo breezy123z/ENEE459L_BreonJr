@@ -1,244 +1,224 @@
-"""Probes — read what the machine says about itself.
-
-INSTRUCTOR SOLUTION. Do not distribute. The student copy of this file has the
-body of every function below replaced by `raise NotImplementedError`.
-
-Every probe takes a `root` argument and reads nothing outside it. That is not
-decoration: it is what makes this lab gradeable without twenty boards on a
-desk, and it is the reason the test suite can present a fake SD-booted machine
-and check that the student's code notices. Code that hardcodes "/" cannot be
-tested, and a measurement you cannot test is a measurement you cannot trust —
-which is the whole argument of Lecture 01, applied to the student's own code.
-
-Each probe returns a dict with, at minimum, a `value` and a `source` key. The
-`source` is the path or command the value came from. A number without its
-provenance is not evidence, so the report format refuses to carry one.
-"""
+"""Read Jetson platform evidence, with injectable filesystems and CLI output."""
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
-import pdb
-import json
-
-# ---------------------------------------------------------------------------
-# Small helpers. These are given to students; the exercise is the probes.
-# ---------------------------------------------------------------------------
 
 
 def read_text(root: Path, rel: str) -> str | None:
-    """Read `root/rel`, returning None if it is missing or unreadable.
-
-    Missing is a normal outcome here, not an error: a devkit with no NVMe
-    genuinely has no /sys/block/nvme0n1, and the report needs to say so rather
-    than crash.
-    """
-    p = Path(root) / rel.lstrip("/")
+    """Read a rooted file; missing or unreadable data is a normal outcome."""
     try:
-        return p.read_text(errors="replace").strip("\x00").strip()
-    except (OSError, UnicodeDecodeError):
+        return (Path(root) / rel.lstrip("/")).read_text(
+            errors="replace"
+        ).strip("\x00 \t\r\n")
+    # Some Jetson sysfs sensors return no data to the buffered reader.
+    except (OSError, UnicodeDecodeError, TypeError):
         return None
 
 
 def run(cmd: list[str]) -> str | None:
-    """Run a command, returning stdout, or None if it is absent or fails."""
+    """Return successful command output, with a bounded wait."""
     if shutil.which(cmd[0]) is None:
         return None
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return None
-    if out.returncode != 0:
-        return None
-    return out.stdout.strip()
+    return result.stdout.strip() if result.returncode == 0 else None
 
 
 def unknown(source: str, why: str) -> dict[str, Any]:
-    """The value this lab returns when it cannot determine something.
-
-    Note what this is not: it is not None threaded through the report, and it
-    is not a plausible default. It is an explicit record that the probe ran and
-    failed, carrying the reason. Assignment 1's rubric gives credit for these.
-    """
+    """Keep the provenance and reason when evidence is unavailable."""
     return {"value": None, "source": source, "status": "unknown", "detail": why}
 
-# LnkSta/LnkCap lines look like:
-#   LnkSta: Speed 8GT/s, Width x4, TrErr- Train- SlotClk+ DLActive- ...
-#   LnkCap: Port #0, Speed 16GT/s, Width x4, ASPM L1, Exit Latency L1 <64us
+
 _SPEED_RE = re.compile(r"Speed\s+([\d.]+)GT/s")
 _WIDTH_RE = re.compile(r"Width\s+x(\d+)")
-
-# PCIe generation by per-lane transfer rate. Gen3 is 8 GT/s; the Orin Nano
-# devkit's M.2 Key-M slot is wired Gen3 x4, so a Gen4 drive reporting 16 GT/s
-# capability and 8 GT/s status is behaving correctly, not underperforming.
-#
-# Keyed by float, not by the string lspci printed. Keying by string means
-# deciding whether "8", "8.0" and "08" are the same rate, and the obvious
-# normalisation — stripping trailing zeros and dots — silently turns 20 into 2.
 _GEN_BY_GTS = {2.5: 1, 5.0: 2, 8.0: 3, 16.0: 4, 32.0: 5, 64.0: 6}
 
 
 def _parse_link_line(line: str) -> dict[str, Any]:
     speed = _SPEED_RE.search(line)
     width = _WIDTH_RE.search(line)
-    gts = float(speed.group(1)) if speed else None
+    try:
+        gts = float(speed.group(1)) if speed else None
+    except ValueError:
+        gts = None
     return {
         "raw": line.strip(),
         "gts": gts,
         "width": int(width.group(1)) if width else None,
-        "gen": _GEN_BY_GTS.get(gts) if gts is not None else None,
+        "gen": _GEN_BY_GTS.get(gts),
     }
 
-def generate_interpretation_string(neg_speed, cap_speed):
-    if cap_speed > neg_speed:
-        interpretation = (
-            f"drive capable of Gen{capability['gen']}, link running at "
-            f"Gen{negotiated['gen']} — expected on this carrier board, "
-            "whose M.2 Key-M slot is wired Gen3 x4"
-        )
-    else:
-        interpretation = (
-            f"link running at its full capability, Gen{negotiated['gen']} "
-            f"x{negotiated['width']}"
-        )
-    return interpretation
-    
+
+def generate_interpretation_string(negotiated, capability):
+    """Describe measured speed and width without assuming a carrier limit."""
+    def label(link):
+        speed = (f"Gen{link['gen']}" if link["gen"] is not None
+                 else f"{link['gts']:g} GT/s")
+        return f"{speed} x{link['width']}"
+
+    if (negotiated["gts"], negotiated["width"]) == (
+        capability["gts"], capability["width"]
+    ):
+        return f"link running at its full capability, {label(negotiated)}"
+    return (
+        f"drive capable of {label(capability)}, link running at "
+        f"{label(negotiated)}; speed or width differs from device capability"
+    )
 
 
-# ---------------------------------------------------------------------------
-# The probes.
-# ---------------------------------------------------------------------------
-
-## An example code.
 def probe_module_model(root: Path = Path("/")) -> dict[str, Any]:
-    """Which board is this?
-
-    The device tree model string is the most trustworthy identity on a Jetson —
-    it comes from the hardware description the bootloader handed the kernel,
-    not from anything installed afterwards.
-    """
-
-    # step 1: Read the raw null-terminated text from /proc/device-tree/model
+    """Read the bootloader-provided board identity."""
     src = "/proc/device-tree/model"
     raw = read_text(root, src)
-
-    # if unable to read, return an empty dictionary by calling unknown().
     if not raw:
-        return unknown(src, "device tree model node absent — not a Jetson, or /proc not mounted")
-    
-    # step 2: strip null bytes and whitespace from raw string
-    raw = raw.rstrip("\x00").strip()
+        return unknown(src, "device tree model absent or unreadable")
     return {"value": raw, "source": src, "status": "ok"}
 
-# todo by students
-def probe_memory_total_kb(root: Path = Path("/")) -> dict[str, Any]:
-    """How much memory is there, in kB, as the kernel counts it?
 
-    This will read a little under 8 GB on an 8 GB board. That gap is not a
-    fault: the carveout for the GPU and other hardware is taken before Linux
-    ever sees the pool. Students are expected to notice and to explain it in
-    their report rather than round it up.
-    """
-    
-    return {"value": int(m.group(1)), "source": src, "status": "ok"}
+def probe_memory_total_kb(root: Path = Path("/")) -> dict[str, Any]:
+    """Report kernel-visible RAM in kB without rounding to the board label."""
+    src = "/proc/meminfo"
+    raw = read_text(root, src)
+    match = re.search(r"^MemTotal:\s+(\d+)\s+kB\s*$", raw or "", re.M)
+    if match is None or int(match.group(1)) <= 0:
+        return unknown(src, "MemTotal missing, unreadable, or invalid")
+    return {"value": int(match.group(1)), "source": src, "status": "ok"}
 
 
 def probe_root_source(root: Path = Path("/")) -> dict[str, Any]:
-    """What device is the root filesystem actually mounted from?
-
-    This is the probe the lab is built around. A unit that boots from the SD
-    card works, boots, and passes every casual inspection — and then runs the
-    semester's benchmarks against a card an order of magnitude slower than the
-    NVMe sitting unused in the slot. The failure is silent, which is exactly
-    why it has to be a command rather than an assumption.
-
-    /proc/mounts is preferred over `findmnt` because it needs no external
-    binary and no elevation, and because it is what findmnt reads anyway.
-    """
-    
+    """Identify the mounted root device independently of fitted storage."""
+    src = "/proc/mounts"
+    raw = read_text(root, src)
+    if raw is None:
+        return unknown(src, "mount table missing or unreadable")
+    for line in raw.splitlines():
+        fields = line.split()
+        if len(fields) >= 3 and fields[1] == "/":
+            device = re.sub(
+                r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), fields[0]
+            )
+            kind = ("nvme" if re.fullmatch(r"/dev/nvme\d+n\d+(p\d+)?", device)
+                    else "sd" if re.fullmatch(r"/dev/mmcblk\d+(p\d+)?", device)
+                    else "other")
+            return {"value": device, "kind": kind, "source": src, "status": "ok"}
     return unknown(src, "no root mount entry found in mount table")
 
 
 def probe_nvme_present(root: Path = Path("/")) -> dict[str, Any]:
-    """Is there an NVMe device visible as a block device at all?
+    """Distinguish an absent drive from an unreadable storage inventory."""
+    src = "/sys/block/nvme0n1"
+    try:
+        devices = list((Path(root) / "sys/block").iterdir())
+    except OSError:
+        return unknown(src, "block device inventory missing or unreadable")
+    present = any(device.name == "nvme0n1" for device in devices)
+    if not present:
+        return {"value": False, "model": None, "source": src, "status": "ok"}
+    model = read_text(root, src + "/device/model")
+    if not model:
+        result = unknown(src, "NVMe is fitted, but its model is unreadable")
+        result["model"] = None
+        result["present"] = True
+        return result
+    return {"value": True, "model": model, "source": src, "status": "ok"}
 
-    Deliberately separate from probe_root_source. A machine can have an NVMe
-    fitted and still boot from the SD card, and telling those two states apart
-    is what lets the troubleshooting tree in the lab guide send a student to
-    the right branch.
-    """
-    
+
+def probe_pcie_link(
+    root: Path = Path("/"), lspci_output: str | None = None
+) -> dict[str, Any]:
+    """Read capability and negotiated status from the same NVMe endpoint."""
+    src = "lspci -vv"
+    if lspci_output is None:
+        if Path(root).resolve() != Path("/"):
+            return unknown(src, "inject lspci_output when using a fake filesystem")
+        lspci_output = run(["lspci", "-vv"])
+    if not lspci_output:
+        return unknown(src, "lspci unavailable, failed, or returned no output")
+
+    # Full lspci output includes unrelated devices; never combine their links.
+    blocks = re.split(r"\n\s*\n", lspci_output.strip())
+    nvme = [block for block in blocks
+            if re.search(r"Non-Volatile memory|NVM Express|NVMe", block, re.I)]
+    if nvme:
+        block = nvme[0]
+    elif re.search(r"(?m)^\S*\d{2}:\d{2}\.\d\s", lspci_output):
+        return unknown(src, "no NVMe endpoint found in PCI inventory")
+    else:
+        block = lspci_output  # Tests may supply only the two link lines.
+
+    links = {}
+    for key, marker in (("capability", "LnkCap:"), ("negotiated", "LnkSta:")):
+        line = next((line for line in block.splitlines()
+                     if line.strip().startswith(marker)), None)
+        if line is None:
+            return unknown(src, f"{marker} missing; elevated access may be needed")
+        links[key] = _parse_link_line(line)
+        if links[key]["gts"] is None or not links[key]["width"]:
+            return unknown(src, f"{marker} speed or width unreadable")
+    negotiated, capability = links["negotiated"], links["capability"]
     return {
-        "value": ,
-        "model": ,
-        "source": ,
-        "status": "ok",
-    }
-
-
-def probe_pcie_link(root: Path = Path("/"), lspci_output: str | None = None) -> dict[str, Any]:
-    """What did the PCIe link negotiate, and what was it capable of?
-
-    Two numbers, not one. The gap between them is the lab's worked example of
-    spec sheet against measured reality: a Gen4 drive in a Gen3 slot advertises
-    16 GT/s and settles at 8 GT/s, and a student who reports only the second
-    number has recorded a fact without recording what it means.
-
-    `lspci_output` exists so the tests can drive this without root or hardware.
-    In normal use it is None and the probe shells out.
-    """
-        
-    return {
-        "value":,
-        "negotiated": ,
-        "capability": ,
-        "interpretation": ,
-        "source": ,
+        "value": negotiated["raw"],
+        "negotiated": negotiated,
+        "capability": capability,
+        "interpretation": generate_interpretation_string(negotiated, capability),
+        "source": src,
         "status": "ok",
     }
 
 
 def probe_thermal_zones(root: Path = Path("/")) -> dict[str, Any]:
-    """Every thermal zone the kernel exposes, in degrees C.
-
-    Sysfs reports millidegrees. The division by 1000 is the entire trap: a
-    report claiming the board idles at 43,000 degrees has been submitted more
-    than once, and it is a good, cheap lesson in reading units before reading
-    numbers.
-    """
+    """Convert readable thermal zones from millidegrees C and report the peak."""
+    src = "/sys/class/thermal/thermal_zone*/temp"
+    zones = []
+    for path in sorted((Path(root) / "sys/class/thermal").glob("thermal_zone*")):
+        rel = "/sys/class/thermal/" + path.name
+        raw = read_text(root, rel + "/temp")
+        try:
+            temp_c = int(raw) / 1000
+        except (TypeError, ValueError):
+            continue
+        zones.append({
+            "zone": path.name,
+            "type": read_text(root, rel + "/type"),
+            "temp_c": temp_c,
+        })
+    if not zones:
+        return unknown(src, "no readable thermal zone temperatures")
     return {
-        "value": ,
-        "zones": ,
-        "source": ,
-        "status": "ok",
+        "value": max(zone["temp_c"] for zone in zones),
+        "zones": zones, "source": src, "status": "ok",
     }
 
 
-def probe_power_mode(root: Path = Path("/"), nvpmodel_output: str | None = None) -> dict[str, Any]:
-    """Which nvpmodel power mode is active?
-
-    Recorded on every artifact this course produces. Lecture 01 slide 24 is
-    the argument for why: two students reporting different throughput for the
-    same model are usually reporting different power modes, and without this
-    field there is no way to find that out after the fact.
-    """
+def probe_power_mode(
+    root: Path = Path("/"), nvpmodel_output: str | None = None
+) -> dict[str, Any]:
+    """Query the current mode without changing the board's power configuration."""
+    src = "nvpmodel -q"
+    if nvpmodel_output is None:
+        if Path(root).resolve() != Path("/"):
+            return unknown(src, "inject nvpmodel_output with a fake filesystem")
+        nvpmodel_output = run(["nvpmodel", "-q"])
+    match = re.search(
+        r"^NV Power Mode:\s*([^\r\n]+)\r?\n\s*(\d+)\s*$",
+        nvpmodel_output or "", re.M,
+    )
+    if match is None:
+        return unknown(src, "power mode name or ID missing or unreadable")
     return {
-        "value": ,
-        "mode_id": ,
-        "source": ,
-        "status": "ok",
+        "value": match.group(1).strip(), "mode_id": int(match.group(2)),
+        "source": src, "status": "ok",
     }
 
-## for debugging - uncomment the following lines for debugging.
-# if __name__ == "__main__":
-#     out = probe_power_mode()
-#     print(out)
 
-# for generating system_report.json
 if __name__ == "__main__":
     report = {
         "module_model": probe_module_model(),
@@ -249,8 +229,6 @@ if __name__ == "__main__":
         "thermal_zones": probe_thermal_zones(),
         "power_mode": probe_power_mode(),
     }
-    
-    path = "system_report.json"
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=4)
-
+    with open("system_report.json", "w", encoding="utf-8") as output:
+        json.dump(report, output, indent=4)
+        output.write("\n")
