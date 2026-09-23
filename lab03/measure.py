@@ -8,7 +8,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
-from bench import Bench, measured, read_text, unknown
+from bench import Bench, measured, read_first, read_text, unknown
 
 
 WARMUP_TOL = 0.5
@@ -62,9 +62,9 @@ def run_timed_iterations(bench: Bench, repeats: int = 100) -> list[float]:
 
     samples = []
 
-    # 2. Finish earlier work before starting each timer.
+    # 2. Finish earlier work once before starting the loop.
+    bench.workload.synchronize()
     for _ in range(repeats):
-        bench.workload.synchronize()
         start = bench.clock()
 
         # 3. Wait for this run to finish before stopping the timer.
@@ -103,100 +103,95 @@ def is_stationary(samples: list[float]) -> dict[str, Any]:
 
 
 def find_warmup_boundary(samples: list[float]) -> dict[str, Any]:
-    """Discard only a slow leading prefix, and only with a stable tail."""
+    """Find the slow leading prefix using the handout's second-half median."""
     source = "leading prefix above (1 + 0.5) x median of the run's second half"
 
-    # 1. Use the second half as the possible settled baseline.
-    if not samples or not _valid(samples):
-        return unknown(source, "need nonempty, finite, nonnegative samples")
+    # 1. Require at least four valid measurements.
+    if len(samples) < 4 or not _valid(samples):
+        return unknown(source, "need at least four valid samples")
 
-    tail = samples[len(samples) // 2:]
-    rate = statistics.median(tail)
-    threshold = (1 + WARMUP_TOL) * rate
+    # 2. Estimate the settled rate from the second half.
+    rate = statistics.median(samples[len(samples) // 2:])
+    if rate <= 0:
+        return unknown(source, "settled median must be positive")
+    threshold = rate * (1 + WARMUP_TOL)
 
-    # 2. Keep everything if the tail never establishes a stable baseline.
-    stationary = is_stationary(tail)
+    # 3. Count only consecutive leading samples above the cutoff.
     boundary = 0
-    if stationary["value"] is True:
-        while boundary < len(samples) and samples[boundary] > threshold:
-            boundary += 1
+    while boundary < len(samples) and samples[boundary] > threshold:
+        boundary += 1
 
-    # 3. Record how much data remains.
-    result = measured(
+    # 4. Keep the boundary and its supporting measurements.
+    return measured(
         boundary, source, settled_rate_ms=round(rate, 4),
         threshold_ms=round(threshold, 4), tolerance=WARMUP_TOL,
         retained=len(samples) - boundary,
     )
-    if stationary["value"] is not True:
-        result["detail"] = "no confirmed steady tail; no samples discarded"
-    return result
 
 
 def summarize(samples: list[float]) -> dict[str, Any]:
-    """Summarize samples with linear interpolation between sorted values."""
+    """Return the exact small-sample conventions specified in the handout."""
 
-    # 1. Reject missing or invalid measurements.
-    if not samples or not _valid(samples):
-        return unknown("latency samples", "need nonempty, finite, nonnegative samples")
+    # 1. An empty input still returns the complete summary structure.
+    if not samples:
+        return {"n": 0, **dict.fromkeys(("mean", "std", "min", "max", "p50", "p95", "p99"))}
+    if not _valid(samples):
+        return unknown("latency samples", "need finite, nonnegative samples")
+
+    # 2. Sort the measurements and calculate the basic statistics.
     values = sorted(samples)
     n = len(values)
-
-    # 2. Use sample standard deviation; one observation cannot estimate it.
     result = {
         "n": n,
-        "mean": round(statistics.mean(values), 4),
-        "std": round(statistics.stdev(values), 4) if n > 1 else None,
+        "mean": round(statistics.fmean(values), 4),
+        "std": round(statistics.stdev(values), 4) if n > 2 else 0.0,
         "min": round(values[0], 4),
         "max": round(values[-1], 4),
     }
 
-    # 3. Interpolate at position (n - 1) times the requested fraction.
+    # 3. Interpolate each percentile, including the single-sample case.
     for percentile in PERCENTILES:
-        position = (n - 1) * percentile / 100
-        lower = math.floor(position)
-        upper = math.ceil(position)
-        fraction = position - lower
-        value = values[lower] + fraction * (values[upper] - values[lower])
-        result[f"p{percentile}"] = round(value, 4)
-
+        result[f"p{percentile}"] = round(_quantile_unrounded(values, percentile), 4)
     return result
 
 
 def is_multimodal(samples: list[float]) -> dict[str, Any]:
-    """Look for a large gap with enough observations on both sides."""
+    """Trim both extremes before looking for a large gap between clusters."""
     source = (
         "widest trimmed gap >= 20.0x the median gap, "
         "with >= 10% of samples on each side"
     )
 
-    # 1. Work on sorted, already warm-up-trimmed measurements.
-    if not _valid(samples) or len(samples) < MIN_SAMPLES_FOR_MODALITY:
-        return unknown(source, "need at least 20 valid retained samples")
+    # 1. Require enough valid data and trim five percent from each end.
+    if len(samples) < MIN_SAMPLES_FOR_MODALITY or not _valid(samples):
+        return unknown(source, "need at least 20 valid samples")
     values = sorted(samples)
-    n = len(values)
+    trim = int(len(values) * 0.05)
+    values = values[trim:len(values) - trim]
 
-    # 2. Only consider gaps leaving at least 10% on each side.
-    minimum = math.ceil(n * MIN_MODE_FRACTION)
-    splits = range(minimum, n - minimum + 1)
-    split = max(splits, key=lambda i: values[i] - values[i - 1])
-    widest = values[split] - values[split - 1]
-    gaps = [values[i] - values[i - 1] for i in range(minimum, n - minimum + 1)]
+    # 2. Find the typical spacing between adjacent measurements.
+    gaps = [right - left for left, right in zip(values, values[1:])]
     typical = statistics.median(gaps)
+    if typical <= 0:
+        return unknown(source, "timer resolution is too coarse: median gap is not positive")
 
-    # 3. Handle identical measurements without dividing by zero.
-    ratio = widest / typical if typical else (0.0 if widest == 0 else None)
-    multimodal = widest > 0 and (typical == 0 or ratio >= MULTIMODAL_GAP_RATIO)
+    # 3. Split at the widest gap, then check both groups are large enough.
+    widest = max(gaps)
+    split = gaps.index(widest) + 1
+    ratio = widest / typical
+    n = len(values)
     modes = [
         {"n": len(group), "share": len(group) / n,
          "median_ms": round(statistics.median(group), 4)}
         for group in (values[:split], values[split:])
     ]
+    enough = all(mode["share"] >= MIN_MODE_FRACTION for mode in modes)
 
+    # 4. Report the split even if it does not meet the detection threshold.
     return measured(
-        multimodal, source,
-        gap_ratio=round(ratio, 2) if ratio is not None else None,
-        widest_gap_ms=round(widest, 5), typical_gap_ms=round(typical, 5),
-        modes=modes,
+        ratio >= MULTIMODAL_GAP_RATIO and enough, source,
+        gap_ratio=round(ratio, 2), widest_gap_ms=round(widest, 5),
+        typical_gap_ms=round(typical, 5), modes=modes,
     )
 
 
@@ -206,6 +201,8 @@ def probe_power_state(bench: Bench) -> dict[str, Any]:
     # 1. Ask nvpmodel for the active profile, without changing it.
     source = "nvpmodel -q"
     reply = bench.runner(["nvpmodel", "-q"])
+    if not reply.ok or reply.returncode != 0:
+        return unknown(source, reply.error or "nvpmodel failed; check installation and permissions")
     match = re.search(r"^NV Power Mode:[ \t]*([^\r\n]+)\r?\n\s*(\d+)\s*$",
                       reply.stdout, re.M) if reply.ok and reply.returncode == 0 else None
     result = (measured(match.group(1).strip(), source, mode_index=int(match.group(2)))
@@ -238,7 +235,7 @@ def probe_telemetry(bench: Bench) -> dict[str, Any]:
         for zone in sorted((root / directory).glob("thermal_zone*")):
             relative = zone.relative_to(root).as_posix()
             value = _number(root, relative + "/temp")
-            if value is not None:
+            if value is not None and value > -1000:
                 name = read_text(root, relative + "/type") or zone.name
                 zones.append((value / 1000, name))
         if zones:

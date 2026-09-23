@@ -3,7 +3,7 @@
 ## Current status
 
 All six requested functions are implemented in `measure.py` with numbered
-comments and spacing. Twenty deterministic tests pass on Windows and the Jetson.
+comments and spacing. Twenty deterministic tests pass on the Jetson after the handout corrections.
 The original starter is preserved at:
 `/home/student/ENEE459L-backups/lab03-original-5dd86b3.tar`.
 
@@ -34,18 +34,22 @@ fallback. Both modes need PyTorch and torchvision.
 
 ## Interpretation choices
 
-- Timing uses synchronization, clock, workload, synchronization, clock. Input
+- Timing synchronizes once before the loop, then uses clock, workload,
+  synchronization, clock for every repetition. Input
   allocation and transfer are outside the measured boundary in the given helper.
 - Warm-up uses the median of the second half and the provided 50% tolerance.
-  It only removes a consecutive leading prefix. A drifting or too-short tail
-  cannot confirm a steady baseline, so nothing is discarded.
+  It requires four samples and a positive second-half median, then removes
+  only a consecutive leading prefix, exactly as Problem 2 specifies.
+  This conflicts with the README statement that drifting runs discard nothing;
+  the detailed handout takes precedence. Drift is checked separately.
 - Stationarity compares first-third and last-third medians using the provided
   10% tolerance. Modality receives the retained samples, not cold-start samples.
 - Summary uses sample standard deviation and linear percentile interpolation.
-  A single observation has no estimated sample standard deviation (null).
-- Modality considers gaps with at least 10% of samples on either side. Its
-  typical gap is the median of those eligible gaps. A positive gap with zero
-  typical spacing is flagged, with a null ratio instead of nonstandard Infinity.
+  As specified, standard deviation is 0.0 for one or two samples. Empty
+  input returns n=0 and all metrics null.
+- Modality trims 5% from each end, calculates all adjacent gaps, and uses
+  their median. A nonpositive median gap returns unknown (coarse timer).
+  The widest gap determines the split; shares use the trimmed sample count.
 - `summarize_setup` describes raw samples as in the starter. The additional
   analysis file describes the retained samples and warns about sparse tails.
 - CPU0 min=max is a clock-pinning hint; it does not prove every GPU/EMC clock
@@ -65,5 +69,5 @@ board input power 4461.312 mW, and GPU load 0% at that instant.
 Tests cover timing order and units, warm-up lengths, threshold equality,
 drifting samples, percentiles, constant and split populations, isolated outliers,
 invalid inputs, power modes, sensor fallback, voltage/current conversion, and
-sample report keys. The ELMS slides and hidden grading tests were unavailable;
-the implementation follows the published starter and README.
+sample report keys. The supplied three-page handout was checked; hidden grading tests were unavailable;
+the implementation follows the handout, with the documented power-unit correction.

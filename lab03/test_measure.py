@@ -36,7 +36,7 @@ class MeasureTests(unittest.TestCase):
                                    synchronize=lambda: events.append("sync"))
         result = m.run_timed_iterations(Bench(workload=workload, clock=clock), 2)
         self.assertEqual(result, [2.0, 3.0])
-        self.assertEqual(events, ["sync", "clock", "run", "sync", "clock"] * 2)
+        self.assertEqual(events, ["sync"] + ["clock", "run", "sync", "clock"] * 2)
 
     def test_invalid_repeat_count(self):
         for repeats in (-1, 1.5, True):
@@ -60,14 +60,14 @@ class MeasureTests(unittest.TestCase):
         samples = [20, 15, 30] + [10] * 97
         self.assertEqual(m.find_warmup_boundary(samples)["value"], 1)
 
-    def test_drift_not_discarded(self):
+    def test_drift_flagged_separately(self):
         samples = [100 - i * 0.8 for i in range(100)]
-        self.assertEqual(m.find_warmup_boundary(samples)["value"], 0)
+        self.assertEqual(m.find_warmup_boundary(samples)["value"], 50)
         self.assertFalse(m.is_stationary(samples)["value"])
 
     def test_small_and_invalid_samples(self):
-        self.assertEqual(m.find_warmup_boundary([100, 1])["value"], 0)
-        for bad in ([], [float("nan")], [float("inf")], [-1]):
+        self.assertEqual(m.find_warmup_boundary([100, 1])["status"], "unknown")
+        for bad in ([float("nan")], [float("inf")], [-1]):
             self.assertEqual(m.summarize(bad)["status"], "unknown")
             self.assertEqual(m.find_warmup_boundary(bad)["status"], "unknown")
         self.assertEqual(m.is_stationary([1] * 3)["status"], "unknown")
@@ -77,17 +77,19 @@ class MeasureTests(unittest.TestCase):
         result = m.summarize([1, 2, 3, 4])
         self.assertEqual(result, {"n": 4, "mean": 2.5, "std": 1.291,
                                  "min": 1, "max": 4, "p50": 2.5, "p95": 3.85, "p99": 3.97})
-        self.assertIsNone(m.summarize([2])["std"])
+        self.assertEqual(m.summarize([2])["std"], 0.0)
+        self.assertEqual(m.summarize([1, 2])["std"], 0.0)
+        self.assertEqual(m.summarize([]), {"n": 0, **dict.fromkeys(("mean", "std", "min", "max", "p50", "p95", "p99"))})
 
     def test_constant_and_two_modes(self):
-        self.assertFalse(m.is_multimodal([10] * 100)["value"])
-        result = m.is_multimodal([10] * 50 + [30] * 50)
+        self.assertEqual(m.is_multimodal([10] * 100)["status"], "unknown")
+        result = m.is_multimodal([10 + i * 0.01 for i in range(50)] + [30 + i * 0.01 for i in range(50)])
         self.assertTrue(result["value"])
-        self.assertEqual([mode["n"] for mode in result["modes"]], [50, 50])
+        self.assertEqual([mode["n"] for mode in result["modes"]], [45, 45])
         json.dumps(result, allow_nan=False)
 
     def test_outlier_is_not_second_mode(self):
-        self.assertFalse(m.is_multimodal([10] * 99 + [100])["value"])
+        self.assertFalse(m.is_multimodal([10 + i * 0.01 for i in range(99)] + [100])["value"])
 
     def test_power_profile_and_clock_limits(self):
         self.put(m.CPUFREQ_MIN, "1000")
@@ -112,7 +114,7 @@ class MeasureTests(unittest.TestCase):
         self.put(m.THERMAL_ZONES + "/thermal_zone0/type", "cpu")
         self.put(m.THERMAL_ZONES + "/thermal_zone1/temp", "46000")
         self.put(m.THERMAL_ZONES + "/thermal_zone1/type", "soc")
-        self.put(m.THERMAL_ZONES + "/thermal_zone2/temp", "invalid")
+        self.put(m.THERMAL_ZONES + "/thermal_zone2/temp", "-1000")
         self.put(m.GPU_LOAD_CANDIDATES[0], "221")
         result = m.probe_telemetry(self.bench)
         self.assertEqual(result["temperature_c"]["value"], 46)
