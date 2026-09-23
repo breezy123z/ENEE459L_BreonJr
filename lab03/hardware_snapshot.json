@@ -1,0 +1,35 @@
+{
+    "note": "Hardware snapshot only; no inference workload was run because torch is unavailable.",
+    "probe_power_state": {
+        "value": "25W",
+        "source": "nvpmodel -q",
+        "status": "ok",
+        "mode_index": 1,
+        "jetson_clocks": false,
+        "jetson_clocks_source": {
+            "value": "scaling_min_freq=729600, scaling_max_freq=1.344e+06",
+            "source": "sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq vs sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq",
+            "status": "ok"
+        }
+    },
+    "probe_telemetry": {
+        "temperature_c": {
+            "value": 45.91,
+            "source": "sys/devices/virtual/thermal/*/temp",
+            "status": "ok",
+            "zone": "tj-thermal",
+            "zones_read": 6
+        },
+        "power_mw": {
+            "value": 4461.312,
+            "source": "sys/bus/i2c/drivers/ina3221/1-0040/hwmon/hwmon1/in1_input * sys/bus/i2c/drivers/ina3221/1-0040/hwmon/hwmon1/curr1_input / 1000",
+            "status": "ok"
+        },
+        "gpu_utilization_percent": {
+            "value": 0.0,
+            "source": "sys/devices/platform/gpu.0/load",
+            "status": "ok",
+            "units": "per-mille / 10"
+        }
+    }
+}
