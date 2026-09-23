@@ -1,0 +1,37 @@
+{
+    "device": "cuda",
+    "model": "mobilenet_v3_small",
+    "precision": "fp32",
+    "input_shape": [
+        1,
+        3,
+        224,
+        224
+    ],
+    "batch_size": 1,
+    "timing_boundary": "input already on device; synchronized forward pass",
+    "retained_summary": {
+        "n": 99,
+        "mean": 18.9012,
+        "std": 0.1659,
+        "min": 18.6593,
+        "max": 20.1062,
+        "p50": 18.8776,
+        "p95": 19.077,
+        "p99": 19.1548
+    },
+    "stationarity": {
+        "value": true,
+        "source": "first-third vs last-third median, relative to whole-run median",
+        "status": "ok",
+        "first_median_ms": 18.94732,
+        "last_median_ms": 18.860311,
+        "relative_drift": 0.004609123212957708,
+        "tolerance": 0.1
+    },
+    "percentile_support": {
+        "p50": true,
+        "p95": true,
+        "p99": false
+    }
+}

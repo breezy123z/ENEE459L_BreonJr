@@ -7,11 +7,18 @@ comments and spacing. Twenty deterministic tests pass on the Jetson after the ha
 The original starter is preserved at:
 `/home/student/ENEE459L-backups/lab03-original-5dd86b3.tar`.
 
-The real inference run is blocked: `/usr/bin/python3` cannot import `torch`.
-No virtual environment was found under /home/student or /opt to depth four,
-and the Docker image inventory was empty. The instructor's intended compatible
-PyTorch and torchvision environment is still needed. No packages were installed.
-No inference timing report has been fabricated or copied from the sample.
+The course installation instructions were completed on September 23, 2026.
+Verified torch 2.8.0, torchvision 0.23.0, CUDA 12.6, CUDA available=True,
+GPU Orin, and compute capability (8, 7). cuSPARSELt CUDA 12 is installed.
+The real CUDA benchmark completed with 100 MobileNet V3 Small FP32 runs.
+One warm-up run was removed, leaving 99 samples with mean 18.9012 ms,
+median 18.8776 ms, and p95 19.0770 ms. The retained run was stationary and
+not flagged as multimodal. The p99 estimate has fewer than five observations
+above it, so it should not be treated as a well-supported tail estimate.
+
+Telemetry in system_report.json is sampled after the timing loop, not averaged
+across inference. The supplied model uses weights=None (random weights); this
+is a latency benchmark, not a model-accuracy evaluation.
 
 ## Run
 
@@ -21,8 +28,7 @@ python3 -m unittest -v test_measure.py
 python3 measure.py
 ```
 
-The benchmark defaults to CUDA and 100 repetitions. After activating the course
-Python environment, the last command writes:
+The benchmark defaults to CUDA and 100 repetitions. The last command writes:
 
 - `samples_analysis.json`: raw measured latencies, matching the sample list format.
 - `system_report.json`: the five top-level entries in the instructor's sample.
