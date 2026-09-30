@@ -36,7 +36,7 @@ Run from lab04:
     python3 main.py
     python3 -m unittest -v test_complexity.py
 
-All 18 tests passed locally on September 30, 2026. The entire generated
+All 18 tests passed locally and on the Jetson on September 30, 2026. The entire generated
 complexity_results.json equals sample_complexity_results.json after parsing.
 Additional independent examples check grouped and depthwise convolutions,
 linear biases, FP16 weights with FP32 buffers, int4 storage, chain liveness,
