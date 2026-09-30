@@ -60,9 +60,9 @@ the user's actual Lab 3 measurement reports over conflicting instructor copies.
 The unedited Lab 4 starter is available in the upstream merge parent in Git and
 in the local archive work/lab04-original.tar in the task workspace.
 
-The Jetson accepted an SSH login but disconnected before the repository update;
-a subsequent attempt timed out. These files have not yet been deployed or run
-on the Jetson. No GPU is required for this static analysis.
+The Jetson repository at /home/student/ENEE459L was updated to solution4.
+Both python3 main.py and python3 -m unittest -v test_complexity.py succeeded
+on the Jetson (18 tests passed). No GPU is required for this static analysis.
 
 Reviewed against the supplied five-page Lab 4 handout. The named helpers
 _layer_parameters, _elements, _last_use, and _peak_elements are implemented.
