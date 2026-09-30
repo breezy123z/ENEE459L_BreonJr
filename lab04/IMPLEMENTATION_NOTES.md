@@ -36,7 +36,7 @@ Run from lab04:
     python3 main.py
     python3 -m unittest -v test_complexity.py
 
-All 15 tests passed locally on September 30, 2026. The entire generated
+All 18 tests passed locally on September 30, 2026. The entire generated
 complexity_results.json equals sample_complexity_results.json after parsing.
 Additional independent examples check grouped and depthwise convolutions,
 linear biases, FP16 weights with FP32 buffers, int4 storage, chain liveness,
@@ -64,6 +64,8 @@ The Jetson accepted an SSH login but disconnected before the repository update;
 a subsequent attempt timed out. These files have not yet been deployed or run
 on the Jetson. No GPU is required for this static analysis.
 
-The ELMS five-page handout has not been supplied. Implementation follows the
-published README, starter docstrings, and complete sample report.
-
+Reviewed against the supplied five-page Lab 4 handout. The named helpers
+_layer_parameters, _elements, _last_use, and _peak_elements are implemented.
+An omitted convolution kernel defaults to (1, 1). Invalid FLOP convention
+messages list both allowed options. Tests cover these handout requirements
+as well as the complete sample report.

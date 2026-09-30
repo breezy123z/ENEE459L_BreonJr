@@ -21,6 +21,29 @@ class ComplexityTests(unittest.TestCase):
         graph = Graph("grouped", layer.in_shape, [layer])
         self.assertEqual(count_parameters(graph)["value"], 6 * 2 * 3 * 3 + 6)
 
+    def test_default_kernel(self):
+        layer = Layer("c", "conv", (4, 8, 8), (6, 8, 8), groups=2, bias=True)
+        graph = Graph("default", layer.in_shape, [layer])
+        self.assertEqual(count_parameters(graph)["value"], 18)
+        self.assertEqual(model_size_bytes(graph)["value"], 72)
+
+    def test_handout_helpers(self):
+        from complexity import _elements, _last_use, _peak_elements, _layer_parameters
+        layers = [Layer("a", "relu", (10,), (10,)),
+                  Layer("b", "relu", (10,), (10,)),
+                  Layer("c", "add", (10,), (10,), reads=("a", "b"))]
+        graph = Graph("helpers", (10,), layers)
+        self.assertEqual(_elements((2, 3, 4)), 24)
+        self.assertEqual(_layer_parameters(layers[0]), 0)
+        last = _last_use(graph)
+        self.assertEqual(last, {"__input__": 0, "a": 2, "b": 2, "c": 2})
+        self.assertEqual(_peak_elements(graph, last), 30)
+
+    def test_convention_error_lists_options(self):
+        detail = to_flops(computed(10, "x"), "bad")["detail"]
+        for name in ("bad", "mac_is_two_flops", "mac_is_one_flop"):
+            self.assertIn(name, detail)
+
     def test_depthwise(self):
         layer = Layer("c", "conv", (4, 8, 8), (4, 8, 8), kernel=(3, 3), groups=4)
         self.assertEqual(count_parameters(Graph("dw", layer.in_shape, [layer]))["value"], 36)
@@ -71,7 +94,7 @@ class ComplexityTests(unittest.TestCase):
 
     def test_invalid_graphs(self):
         good = Layer("c", "conv", (4, 8, 8), (4, 8, 8), kernel=(3, 3))
-        for bad in (replace(good, groups=3), replace(good, kernel=None),
+        for bad in (replace(good, groups=3), replace(good, kernel=(0, 1)),
                     replace(good, weight_dtype="bad"), replace(good, reads=("future",)),
                     replace(good, in_shape=(0, 8, 8))):
             graph = Graph("bad", bad.in_shape, [bad])
@@ -106,4 +129,3 @@ class ComplexityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

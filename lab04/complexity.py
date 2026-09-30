@@ -31,8 +31,8 @@ def _problems(graph: Graph) -> list[str]:
         if layer.kind == "conv":
             if len(layer.in_shape) != 3 or len(layer.out_shape) != 3:
                 return [f"{layer.name}: convolution needs C,H,W shapes"]
-            if (not layer.kernel or len(layer.kernel) != 2
-                    or any(type(d) is not int or d <= 0 for d in layer.kernel)):
+            if (layer.kernel is not None and (len(layer.kernel) != 2
+                    or any(type(d) is not int or d <= 0 for d in layer.kernel))):
                 return [f"{layer.name}: missing or invalid kernel"]
             if type(layer.groups) is not int or layer.groups <= 0:
                 return [f"{layer.name}: groups must be a positive integer"]
@@ -52,11 +52,11 @@ def _problems(graph: Graph) -> list[str]:
     return problems
 
 
-def _parameters(layer: Layer) -> int:
+def _layer_parameters(layer: Layer) -> int:
     """Count stored trainable scalars for one supported layer."""
     if layer.kind == "conv":
         c_in, c_out = layer.in_shape[0], layer.out_shape[0]
-        kh, kw = layer.kernel
+        kh, kw = layer.kernel or (1, 1)
         return c_out * (c_in // layer.groups) * kh * kw + (c_out if layer.bias else 0)
 
     if layer.kind == "linear":
@@ -87,7 +87,7 @@ def count_parameters(graph: Graph) -> dict[str, Any]:
     # 2. Convolutions divide input channels by groups.
     #    Linear layers multiply input features by output features.
     #    Batch norm has one scale and one shift per channel.
-    per_layer = {layer.name: _parameters(layer) for layer in graph}
+    per_layer = {layer.name: _layer_parameters(layer) for layer in graph}
 
 
     # 3. Keep each layer's count so the total can be checked.
@@ -115,8 +115,7 @@ def model_size_bytes(graph: Graph) -> dict[str, Any]:
     # 2. Multiply each layer's parameters by that layer's byte width.
     for layer in graph:
         weight_bytes = params["per_layer"][layer.name] * float(dtype_bytes(layer.weight_dtype))
-        if weight_bytes:
-            per_dtype[layer.weight_dtype] = per_dtype.get(layer.weight_dtype, 0.0) + weight_bytes
+        per_dtype[layer.weight_dtype] = per_dtype.get(layer.weight_dtype, 0.0) + weight_bytes
 
         # BN running mean and variance remain FP32, even with FP16 weights.
         buffers = 0.0
@@ -137,64 +136,77 @@ def model_size_bytes(graph: Graph) -> dict[str, Any]:
     )
 
 
+def _elements(shape: tuple[int, ...]) -> int:
+    """Multiply dimensions to count the scalars in a tensor."""
+    return math.prod(shape)
+
+
+def _last_use(graph: Graph) -> dict[str, int]:
+    """Find the final consumer of every output and the network input."""
+    last = {}
+    names = [layer.name for layer in graph]
+    for i, layer in enumerate(graph):
+        reads = layer.reads or ((names[i - 1],) if i else ("__input__",))
+        for name in reads:
+            last[name] = i
+        last.setdefault(layer.name, i)
+
+    if graph.layers:
+        last[graph.layers[-1].name] = len(graph) - 1
+    return last
+
+
+def _peak_elements(graph: Graph, last_use: dict[str, int]) -> int:
+    """Count coexisting elements before releasing each layer's inputs."""
+    live = {"__input__": _elements(graph.input_shape)}
+    peak = sum(live.values())
+    for i, layer in enumerate(graph):
+        live[layer.name] = layer.out_elements
+        peak = max(peak, sum(live.values()))
+        for name, last_index in last_use.items():
+            if last_index == i:
+                live.pop(name, None)
+    return peak
+
+
 def count_activations(graph: Graph) -> dict[str, Any]:
     """Track tensors until their last consumer, including residual branches."""
     source = f"{graph.name}: liveness over {len(graph)} layers, input included"
 
-    # 1. Validate dependency names and tensor shapes.
+    # 1. Check shapes and determine when each tensor can be released.
     problems = _problems(graph)
     if problems:
         return unknown(source, "; ".join(problems))
-
-    # None identifies the network input without colliding with layer names.
-    input_elements = math.prod(graph.input_shape)
-    tensors = {None: (input_elements, input_elements * float(dtype_bytes(graph.precision)))}
-    last_read = {None: 0}
-    previous = None
-
-
-    # 2. Explicit reads replace the implicit previous-layer dependency.
-    #    Record the last time each tensor is needed.
-    for index, layer in enumerate(graph):
-        reads = layer.reads if layer.reads else (previous,)
-        for name in reads:
-            last_read[name] = index
-        last_read.setdefault(layer.name, index)
-        tensors[layer.name] = (
-            layer.out_elements, layer.out_elements * float(dtype_bytes(layer.act_dtype))
-        )
-        previous = layer.name
-
-    live = {None}
-    peak_elements = input_elements
-    peak_bytes = tensors[None][1]
+    last_use = _last_use(graph)
+    live = {"__input__": _elements(graph.input_shape) * float(dtype_bytes(graph.precision))}
+    peak_bytes = sum(live.values())
     peak_at = "input"
     total_elements = 0
     total_bytes = 0.0
 
 
-    # 3. Allocate the output while the inputs are still resident.
-    #    Only after recording the peak may finished tensors be released.
-    for index, layer in enumerate(graph):
-        live.add(layer.name)
-        elements, size = tensors[layer.name]
-        total_elements += elements
-        total_bytes += size
+    # 2. Allocate each output while its inputs are still in memory.
+    for i, layer in enumerate(graph):
+        out_b = layer.out_elements * float(dtype_bytes(layer.act_dtype))
+        live[layer.name] = out_b
+        total_elements += layer.out_elements
+        total_bytes += out_b
 
-        resident_elements = sum(tensors[name][0] for name in live)
-        resident_bytes = sum(tensors[name][1] for name in live)
-        peak_elements = max(peak_elements, resident_elements)
-        if resident_bytes > peak_bytes:
-            peak_bytes = resident_bytes
+        resident = sum(live.values())
+        if resident > peak_bytes:
+            peak_bytes = resident
             peak_at = layer.name
 
-        live = {name for name in live if last_read[name] > index}
+        # Release tensors only after recording their overlapping memory.
+        for name, last_index in last_use.items():
+            if last_index == i:
+                live.pop(name, None)
 
 
-    # 4. Total counts layer outputs; peak also includes the network input.
+    # 3. Total counts outputs; peak also includes the network input.
     return computed(
         _bytes(peak_bytes), source, peak_at=peak_at,
-        peak_elements=peak_elements, total_elements=total_elements,
+        peak_elements=_peak_elements(graph, last_use), total_elements=total_elements,
         total_bytes=total_bytes, includes_network_input=True,
         note="peak is the resident set, not the largest single tensor",
     )
@@ -205,10 +217,10 @@ def to_flops(macs: dict[str, Any], convention: str = "mac_is_two_flops") -> dict
     source = macs.get("source", "MAC finding") if isinstance(macs, dict) else "MAC finding"
 
     # 1. Unknown inputs and unsupported conventions are not zero operations.
-    if convention not in FLOP_CONVENTIONS:
-        return unknown(source, f"unrecognized FLOP convention: {convention}")
     if not isinstance(macs, dict) or not is_answered(macs):
-        return unknown(source, "MAC count is unknown")
+        return unknown(source, "No valid MAC count was provided")
+    if convention not in FLOP_CONVENTIONS:
+        return unknown(source, f"unrecognized FLOP convention: {convention}; allowed: {list(FLOP_CONVENTIONS)}")
 
     def valid(value):
         return (isinstance(value, (int, float)) and not isinstance(value, bool)
@@ -229,4 +241,3 @@ def to_flops(macs: dict[str, Any], convention: str = "mac_is_two_flops") -> dict
         per_layer={name: value * factor for name, value in layers.items()},
         note="a count of operations contains no unit of time",
     )
-
