@@ -24,10 +24,12 @@ Date: October 7, 2026.
    ties, boundaries, invalid inputs, immutability, ordering, channel clamping,
    storage arithmetic, classification precedence, and sweep independence.
 7. Ran main.py and compare_json.py locally: 100% match. All 12 tests passed.
-8. Attempted Jetson deployment: SSH authenticated but stopped responding
-   before repository commands completed. A fresh connection timed out on port
-   22. Lab 5 has not been deployed or tested on the Jetson; local verification
-   is complete and solution5 is published for a later pull.
+8. Reconnected to the Jetson on October 7, 2026. Confirmed the existing
+   /home/student/ENEE459L checkout was clean on solution4, fetched fork/solution5,
+   and switched to solution5 without making another repository copy.
+9. Ran python3 main.py, the instructor JSON comparator, and the test suite on
+   the Jetson: 100% reference match and all 12 tests passed (0.136 seconds).
+   Generated report: /home/student/ENEE459L/lab05/prune_outputs.json.
 
 ## Run from lab05
 
