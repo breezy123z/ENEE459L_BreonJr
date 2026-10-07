@@ -1,0 +1,8 @@
+======================================================================
+PRUNING JSON VERIFICATION REPORT
+Reference: sample_prune_outputs.json
+Student  : prune_outputs.json
+======================================================================
+RESULT: ALL CHECKS PASSED (100% Match)
+All criteria, masks, indices, bytes, and sweep rows match reference.
+======================================================================

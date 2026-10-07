@@ -1,0 +1,17 @@
+test_channel_norms (test_prune.PruningTests.test_channel_norms) ... ok
+test_classification_priority (test_prune.PruningTests.test_classification_priority) ... ok
+test_drop_original_order (test_prune.PruningTests.test_drop_original_order) ... ok
+test_full_reference (test_prune.PruningTests.test_full_reference) ... ok
+test_invalid_requests (test_prune.PruningTests.test_invalid_requests) ... ok
+test_magnitude_ties (test_prune.PruningTests.test_magnitude_ties) ... ok
+test_mask_no_mutation (test_prune.PruningTests.test_mask_no_mutation) ... ok
+test_ratio_endpoints (test_prune.PruningTests.test_ratio_endpoints) ... ok
+test_round_half_up (test_prune.PruningTests.test_round_half_up) ... ok
+test_row_zeros_vs_removed (test_prune.PruningTests.test_row_zeros_vs_removed) ... ok
+test_storage_hand_calculation (test_prune.PruningTests.test_storage_hand_calculation) ... ok
+test_sweep_order_and_fresh_baseline (test_prune.PruningTests.test_sweep_order_and_fresh_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.106s
+
+OK

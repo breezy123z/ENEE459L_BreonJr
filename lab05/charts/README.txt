@@ -1,0 +1,1 @@
+Open index.html to read the eight-chart report. Each chart has PNG and SVG exports. Data: sweep-results.csv and prune_outputs.json. Calculated storage only; no accuracy or inference performance measurement. Verified source branch: solution5, commit 7268cfe.

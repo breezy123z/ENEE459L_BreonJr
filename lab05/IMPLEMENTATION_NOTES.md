@@ -60,3 +60,11 @@ propagate shape changes into the next layer. No dependencies were installed.
 The separate ELMS slides were not supplied; this implementation follows the
 published starter contracts and complete sample. The README has copied lab
 references: use sample_prune_outputs.json and branch solution5 for this lab.
+
+## Submission artifacts
+
+Added eight annotated charts in charts/ (PNG and SVG), a browser report,
+a GitHub-readable chart overview, sweep CSV, source JSON, and a ZIP download.
+Added build_charts.py and optional requirements-charts.txt for reproduction.
+The chart bundle documents that storage is calculated, and neither accuracy
+nor inference speed was measured. Local test output is saved in test-results.txt.

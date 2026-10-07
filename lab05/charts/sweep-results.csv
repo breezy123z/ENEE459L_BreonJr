@@ -1,0 +1,9 @@
+model,granularity,storage,mask_encoding,nominal_ratio,values_zeroed,zeroed_fraction,parameters_before,parameters_after,achieved_reduction,bytes_dense,bytes_stored,removal
+tinyconv,fine,masked,framework,0.0,0,0.0,11740,11740,0.0,46960,93920,dense
+tinyconv,fine,masked,framework,0.25,2935,0.25,11740,11740,0.0,46960,93920,masked
+tinyconv,fine,masked,framework,0.5,5870,0.5,11740,11740,0.0,46960,93920,masked
+tinyconv,fine,masked,framework,0.75,8805,0.75,11740,11740,0.0,46960,93920,masked
+tinyconv,channel,dense,,0.0,0,0.0,11740,11740,0.0,46960,46960,dense
+tinyconv,channel,dense,,0.25,0,0.0,11740,8785,0.251704,46960,35140,structurally absent
+tinyconv,channel,dense,,0.5,0,0.0,11740,5870,0.5,46960,23480,structurally absent
+tinyconv,channel,dense,,0.75,0,0.0,11740,2915,0.751704,46960,11660,structurally absent
