@@ -24,7 +24,10 @@ Date: October 7, 2026.
    ties, boundaries, invalid inputs, immutability, ordering, channel clamping,
    storage arithmetic, classification precedence, and sweep independence.
 7. Ran main.py and compare_json.py locally: 100% match. All 12 tests passed.
-8. Jetson deployment and verification pending at the time of this commit.
+8. Attempted Jetson deployment: SSH authenticated but stopped responding
+   before repository commands completed. A fresh connection timed out on port
+   22. Lab 5 has not been deployed or tested on the Jetson; local verification
+   is complete and solution5 is published for a later pull.
 
 ## Run from lab05
 
