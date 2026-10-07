@@ -74,7 +74,7 @@ def magnitude_mask(t: Tensor, ratio: float) -> tuple[int, ...]:
     """Which elements survive a magnitude prune at `ratio`, element by element.
 
     Returns a tuple the same length as `t.data`, `1` to keep and `0` to zero.
-    Importance is `|w|` — the criterion of Lecture 05 slide 25, which the
+    Importance is `|w|` â€” the criterion of Lecture 05 slide 25, which the
     source itself calls a heuristic.
 
     The threshold is not chosen; it falls out. You are asked for a fraction,
@@ -84,7 +84,9 @@ def magnitude_mask(t: Tensor, ratio: float) -> tuple[int, ...]:
     the whole model.
     """
 
-    pass
+    # Choose weakest weights, preserving mask order.
+    dropped = set(_smallest_indices(t.data, _drop_count(t.parameters, ratio)))
+    return tuple(0 if i in dropped else 1 for i in range(t.parameters))
 
 
 # ---------------------------------------------------------------------------
@@ -96,18 +98,22 @@ def channel_keep(t: Tensor, ratio: float, p: float = 2.0) -> tuple[int, ...]:
 
     Scores every channel with `_group_scores` and drops the
     `_drop_count(C_out, ratio)` weakest, except that at least `MIN_CHANNELS`
-    survive — a layer pruned to zero outputs is not a smaller layer, it is a
+    survive â€” a layer pruned to zero outputs is not a smaller layer, it is a
     disconnected graph, and returning one is worse than refusing the ratio.
 
     The clamp is reported rather than hidden: `sparsity_row` records the
     achieved reduction, so a 90% request on a 4-channel tensor shows up in
     `sparsity.json` as an achieved 75% and the gap is visible.
     """
-    pass
+    # Rank channel norms and retain at least one channel.
+    scores = _group_scores(t, p)
+    count = min(_drop_count(t.channels, ratio), t.channels - MIN_CHANNELS)
+    dropped = set(_smallest_indices(scores, count))
+    return tuple(c for c in range(t.channels) if c not in dropped)
 
 
 # ---------------------------------------------------------------------------
-# 3. masking — the removal that changes no shape
+# 3. masking â€” the removal that changes no shape
 # ---------------------------------------------------------------------------
 
 def apply_mask(t: Tensor, mask: Sequence[int]) -> Tensor:
@@ -118,11 +124,15 @@ def apply_mask(t: Tensor, mask: Sequence[int]) -> Tensor:
     and multiplied by any dense kernel exactly as before. Nothing here is a
     saving; it is a set of values that happen to be zero.
     """
-    pass
+    # Validate the mask and return a new tensor with unchanged shape.
+    if len(mask) != t.parameters or any(v not in (0, 1) for v in mask):
+        raise TensorError("mask must contain one 0 or 1 per parameter")
+    data = tuple(v if keep else 0.0 for v, keep in zip(t.data, mask))
+    return Tensor(t.name, t.shape, data, t.dtype)
 
 
 # ---------------------------------------------------------------------------
-# 4. channel removal — the removal that changes the shape
+# 4. channel removal â€” the removal that changes the shape
 # ---------------------------------------------------------------------------
 
 def drop_channels(t: Tensor, keep: Sequence[int]) -> Tensor:
@@ -130,16 +140,25 @@ def drop_channels(t: Tensor, keep: Sequence[int]) -> Tensor:
 
     Axis 0 shrinks to `len(keep)` and the surviving values stay in their
     original relative order. The result is dense, has no holes, and needs
-    nothing from the kernel, the format or the hardware to be faster —
+    nothing from the kernel, the format or the hardware to be faster â€”
     the fourth column of slide 8.
 
     What this function cannot do is fix up the *next* layer, whose `C_in` must
     now match. Lecture 05 slide 20 draws that propagation and it is why
     channel pruning is a graph operation in real code. This lab prunes tensor
     by tensor and accounts for it that way, which is honest as long as
-    `sparsity.json` does not claim the model still runs — and it does not.
+    `sparsity.json` does not claim the model still runs â€” and it does not.
     """
-    pass
+    # Copy surviving channel slices in their original order.
+    keep = tuple(keep)
+    if (not keep or len(set(keep)) != len(keep)
+            or any(type(c) is not int or not 0 <= c < t.channels for c in keep)):
+        raise TensorError("keep must contain distinct valid channels, with at least one")
+    data = []
+    for c in sorted(keep):
+        lo, hi = _channel_slice(t, c)
+        data.extend(t.data[lo:hi])
+    return Tensor(t.name, (len(keep),) + t.shape[1:], tuple(data), t.dtype)
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +194,22 @@ def bytes_stored(tensors: Sequence[Tensor], storage: str = "dense",
     accounting that rounds in its own favour is the thing this lab teaches you
     to distrust.
     """
-    pass
+    # Count weights plus the chosen storage overhead.
+    if storage not in STORAGE_FORMS:
+        raise TensorError(f"unknown storage {storage!r}")
+    if storage == "masked" and mask_encoding not in ("framework", "bitmap"):
+        raise TensorError(f"unknown mask encoding {mask_encoding!r}")
+    total = 0
+    for t in tensors:
+        dense = t.parameters * dtype_bytes(t.dtype)
+        if storage == "dense":
+            total += dense
+        elif storage == "masked":
+            mask_bytes = dense if mask_encoding == "framework" else (t.parameters + 7) // 8
+            total += dense + mask_bytes
+        else:
+            total += sum(v != 0 for v in t.data) * (dtype_bytes(t.dtype) + INDEX_BYTES)
+    return total
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +240,23 @@ def sparsity_row(model: str, ratio: float, granularity: str,
     says why: on a nominal axis the two granularities are not comparable, and
     the comparison is the lab.
     """
-    pass
+    # Report actual zeros separately from structural reduction.
+    _drop_count(0, ratio)
+    if granularity not in GRANULARITIES:
+        raise TensorError(f"unknown granularity {granularity!r}")
+    n_before, n_after = total_parameters(before), total_parameters(after)
+    zeros = sum(v == 0 for t in after for v in t.data)
+    return {
+        "model": model, "granularity": granularity, "storage": storage,
+        "mask_encoding": mask_encoding if storage == "masked" else None,
+        "nominal_ratio": ratio, "values_zeroed": zeros,
+        "zeroed_fraction": round(zeros / n_after, 6) if n_after else 0.0,
+        "parameters_before": n_before, "parameters_after": n_after,
+        "achieved_reduction": round(1 - n_after / n_before, 6) if n_before else 0.0,
+        "bytes_dense": bytes_stored(before, "dense"),
+        "bytes_stored": bytes_stored(after, storage, mask_encoding),
+        "removal": classify_removal(before, after, storage),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +271,7 @@ def classify_removal(before: Sequence[Tensor], after: Sequence[Tensor],
 
       1. If any shape changed, it is `structurally absent`, whatever the
          storage form says. A shape change is the strongest claim available
-         and it subsumes the others — a channel-pruned tensor written to a
+         and it subsumes the others â€” a channel-pruned tensor written to a
          sparse format is still structurally absent, and calling it
          `stored sparse` would report the weaker fact.
       2. Otherwise, if it is written sparse, it is `stored sparse`.
@@ -239,7 +289,21 @@ def classify_removal(before: Sequence[Tensor], after: Sequence[Tensor],
     will say so. It is reporting a property of the values, not a claim that
     anybody pruned with a 2:4 constraint in mind.
     """
-    pass
+    # Check structural changes before weaker removal categories.
+    if storage not in STORAGE_FORMS:
+        raise TensorError(f"unknown storage {storage!r}")
+    if len(before) != len(after) or any(a.name != b.name for a, b in zip(before, after)):
+        raise TensorError("before and after must describe matching tensors")
+    if any(a.shape != b.shape for a, b in zip(before, after)):
+        return "structurally absent"
+    if storage == "sparse":
+        return "stored sparse"
+    if after and all(sum(v != 0 for v in t.data[i:i + NM_M]) <= NM_N
+                     for t in after for i in range(0, t.parameters, NM_M)):
+        return "patterned"
+    if any(v == 0 for t in after for v in t.data):
+        return "masked"
+    return "dense"
 
 
 # ---------------------------------------------------------------------------
@@ -267,4 +331,19 @@ def sweep_model(model: dict[str, Any], ratios: Sequence[float],
     the baseline every other row is a ratio against, and a sweep without it
     has four numbers and no result.
     """
-    pass
+    # Start each pruning experiment from the original model.
+    before = model["tensors"]
+    ratios = sorted(ratios)
+    rows = []
+    for granularity in granularities:
+        if granularity not in GRANULARITIES:
+            raise TensorError(f"unknown granularity {granularity!r}")
+        form = storage if storage is not None else GRANULARITY_STORAGE[granularity]
+        for ratio in ratios:
+            if granularity == "fine":
+                after = [apply_mask(t, magnitude_mask(t, ratio)) for t in before]
+            else:
+                after = [drop_channels(t, channel_keep(t, ratio, p)) for t in before]
+            rows.append(sparsity_row(model["name"], ratio, granularity,
+                                     before, after, form, mask_encoding))
+    return rows
