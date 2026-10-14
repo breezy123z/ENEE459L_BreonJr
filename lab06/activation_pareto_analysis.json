@@ -1,0 +1,14 @@
+{
+  "purpose": "Additional analysis: include activation reconstruction error so biased calibration is visible.",
+  "objectives": {
+    "effective_bits": -1.0,
+    "weight_error": -1.0,
+    "activation_error": -1.0
+  },
+  "pareto_front_indices": [
+    0,
+    1,
+    2,
+    3
+  ]
+}

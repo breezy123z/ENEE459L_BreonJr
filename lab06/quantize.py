@@ -124,6 +124,7 @@ def quantize_tensor(t: Tensor, bits: int = DEFAULT_BITS,
         )
     if clip not in CLIP_METHODS:
         raise TensorError(f"unknown clip method {clip!r}; known: {list(CLIP_METHODS)}")
+    # 1. Choose the integer bounds and the groups sharing a scale.
     qmin, qmax = _qmin_qmax(bits, symmetric)
     if granularity == "per_channel":
         groups = [_channel_slice(t, c) for c in range(t.channels)]
@@ -133,6 +134,8 @@ def quantize_tensor(t: Tensor, bits: int = DEFAULT_BITS,
     scales: list[float] = []
     zeros: list[int] = []
     clipped = 0
+
+    # 2. Derive a scale/zero point from each group or calibration range.
     for lo, hi in groups:
         if given_range is not None:
             rlo, rhi = float(given_range[0]), float(given_range[1])
@@ -141,6 +144,8 @@ def quantize_tensor(t: Tensor, bits: int = DEFAULT_BITS,
         s, z = _scale_zero(rlo, rhi, bits, symmetric)
         scales.append(s)
         zeros.append(z)
+
+        # 3. Round to integer codes, count overflow, and clamp to bounds.
         for i in range(lo, hi):
             q = _round_half_up(t.data[i] / s) + z
             if q < qmin or q > qmax:
@@ -154,6 +159,7 @@ def quantize_tensor(t: Tensor, bits: int = DEFAULT_BITS,
 
 
 def dequantize(qt: Quantized) -> Tensor:
+    # Each code uses the scale belonging to its output channel or tensor.
     stride = qt.channel_stride if qt.granularity == "per_channel" else len(qt.codes)
     if stride <= 0:
         raise TensorError(f"{qt.name}: a group of {stride} values is not a group")
@@ -176,6 +182,7 @@ def quantization_error(before: Sequence[Tensor],
     a = list(after)
     if len(b) != len(a):
         raise TensorError(f"{len(b)} tensors against {len(a)}")
+    # Accumulate squared reconstruction error and original signal energy.
     num = 0.0
     den = 0.0
     worst = 0.0
@@ -189,6 +196,8 @@ def quantization_error(before: Sequence[Tensor],
             num += d * d
             den += u * u
             worst = max(worst, abs(d))
+
+    # The Frobenius norm is the square root of total squared error.
     frob = math.sqrt(num)
     return {
         "frobenius": round(frob, 8),
@@ -208,6 +217,7 @@ def bytes_stored(tensors: Sequence[Tensor], precision: str = "fp32",
         raise TensorError(
             f"unknown granularity {granularity!r}; known: {list(GRANULARITIES)}"
         )
+    # Weight payload plus one FP32 scale and INT32 zero per INT8 group.
     per = dtype_bytes(precision)
     total = 0.0
     for t in tensors:
@@ -220,6 +230,7 @@ def bytes_stored(tensors: Sequence[Tensor], precision: str = "fp32",
 
 def effective_bits(tensors: Sequence[Tensor], precision: str = "fp32",
                    granularity: str = "per_tensor") -> float:
+    # Include metadata when converting total bytes to bits per parameter.
     n = total_parameters(tensors)
     if n <= 0:
         raise TensorError("a model with no parameters has no bits per parameter")
@@ -244,6 +255,7 @@ def precision_row(model_name: str, config: Mapping[str, Any],
     if not label:
         raise TensorError("a configuration with no label cannot be plotted")
 
+    # 1. Apply the weight precision policy, then reconstruct for comparison.
     if precision == "int8":
         qs = [quantize_tensor(t, DEFAULT_BITS, granularity, symmetric, clip,
                               percentile) for t in tensors]
@@ -256,6 +268,8 @@ def precision_row(model_name: str, config: Mapping[str, Any],
         after = list(tensors)
         scale_count = 0
 
+
+    # 2. Calibrate on selected samples but evaluate on every activation.
     acts = as_tensor("activations", all_values)
     if precision == "int8":
         rlo, rhi = _range_of(calibration_values, clip, percentile, DEFAULT_BITS)
@@ -268,6 +282,8 @@ def precision_row(model_name: str, config: Mapping[str, Any],
         act_after = to_fp16(acts) if precision == "fp16" else acts
         clipped = 0.0
 
+
+    # 3. Record error, clipping, and storage together for this policy.
     return {
         "model": str(model_name),
         "label": label,
@@ -298,6 +314,8 @@ def pareto_front(points: Sequence[Mapping[str, Any]],
         for k, p in enumerate(pts):
             if p.get(name) is None:
                 raise TensorError(f"point {k} has no {name!r} to compare on")
+    # A point is dominated only if another is no worse on every objective
+    # and strictly better on at least one. Ties remain on the frontier.
     front: list[int] = []
     for i, a in enumerate(pts):
         beaten = False
@@ -345,8 +363,8 @@ if __name__ == "__main__":
     assert len(q_pt.codes) == test_tensor.parameters
     assert q_pt.scale_count == 1
     assert q_pc.scale_count == test_tensor.channels
-    print(f"  ✓ Per-tensor quantized:  {len(q_pt.codes)} codes, {q_pt.scale_count} scale")
-    print(f"  ✓ Per-channel quantized: {len(q_pc.codes)} codes, {q_pc.scale_count} scales")
+    print(f"  âœ“ Per-tensor quantized:  {len(q_pt.codes)} codes, {q_pt.scale_count} scale")
+    print(f"  âœ“ Per-channel quantized: {len(q_pc.codes)} codes, {q_pc.scale_count} scales")
 
     # -----------------------------------------------------------------
     # 2. Test dequantize
@@ -358,7 +376,7 @@ if __name__ == "__main__":
     assert deq_pt.shape == test_tensor.shape
     assert len(deq_pt.data) == len(test_tensor.data)
     assert deq_pc.shape == test_tensor.shape
-    print(f"  ✓ Reconstructed tensor shape: {deq_pt.shape}, dtype: {deq_pt.dtype}")
+    print(f"  âœ“ Reconstructed tensor shape: {deq_pt.shape}, dtype: {deq_pt.dtype}")
 
     # -----------------------------------------------------------------
     # 3. Test quantization_error
@@ -368,8 +386,8 @@ if __name__ == "__main__":
     err_pc = quantization_error([test_tensor], [deq_pc])
 
     assert err_pt["relative"] >= 0.0 and err_pc["relative"] >= 0.0
-    print(f"  ✓ Per-tensor relative error:  {err_pt['relative']:.6f} (max_abs: {err_pt['max_abs']:.6f})")
-    print(f"  ✓ Per-channel relative error: {err_pc['relative']:.6f} (max_abs: {err_pc['max_abs']:.6f})")
+    print(f"  âœ“ Per-tensor relative error:  {err_pt['relative']:.6f} (max_abs: {err_pt['max_abs']:.6f})")
+    print(f"  âœ“ Per-channel relative error: {err_pc['relative']:.6f} (max_abs: {err_pc['max_abs']:.6f})")
 
     # -----------------------------------------------------------------
     # 4. Test bytes_stored
@@ -382,10 +400,10 @@ if __name__ == "__main__":
 
     assert bytes_fp32 > bytes_fp16 > bytes_int8_pt
     assert bytes_int8_pc >= bytes_int8_pt  # per-channel carries scale/zero per output channel
-    print(f"  ✓ FP32 bytes:            {bytes_fp32} B")
-    print(f"  ✓ FP16 bytes:            {bytes_fp16} B")
-    print(f"  ✓ INT8 per-tensor bytes: {bytes_int8_pt} B")
-    print(f"  ✓ INT8 per-channel bytes:{bytes_int8_pc} B")
+    print(f"  âœ“ FP32 bytes:            {bytes_fp32} B")
+    print(f"  âœ“ FP16 bytes:            {bytes_fp16} B")
+    print(f"  âœ“ INT8 per-tensor bytes: {bytes_int8_pt} B")
+    print(f"  âœ“ INT8 per-channel bytes:{bytes_int8_pc} B")
 
     # -----------------------------------------------------------------
     # 5. Test effective_bits
@@ -399,10 +417,10 @@ if __name__ == "__main__":
     assert eff_fp32 == 32.0
     assert eff_fp16 == 16.0
     assert eff_int8_pc > 8.0  # accounts for scales and zeros overhead
-    print(f"  ✓ FP32 effective bits:            {eff_fp32:.4f}")
-    print(f"  ✓ FP16 effective bits:            {eff_fp16:.4f}")
-    print(f"  ✓ INT8 per-tensor effective bits: {eff_int8_pt:.4f}")
-    print(f"  ✓ INT8 per-channel effective bits:{eff_int8_pc:.4f}")
+    print(f"  âœ“ FP32 effective bits:            {eff_fp32:.4f}")
+    print(f"  âœ“ FP16 effective bits:            {eff_fp16:.4f}")
+    print(f"  âœ“ INT8 per-tensor effective bits: {eff_int8_pt:.4f}")
+    print(f"  âœ“ INT8 per-channel effective bits:{eff_int8_pc:.4f}")
 
     # -----------------------------------------------------------------
     # 6. Test precision_row
@@ -448,7 +466,7 @@ if __name__ == "__main__":
             all_values=all_act_vals,
         )
         rows.append(row)
-        print(f"  ✓ {row['label']:<32} | W_Err: {row['weight_error']:<8.6f} | Act_Err: {row['activation_error']:<8.6f} | Bits: {row['effective_bits']:<6.3f}")
+        print(f"  âœ“ {row['label']:<32} | W_Err: {row['weight_error']:<8.6f} | Act_Err: {row['activation_error']:<8.6f} | Bits: {row['effective_bits']:<6.3f}")
 
     # -----------------------------------------------------------------
     # 7. Test pareto_front & Save Output
@@ -462,7 +480,7 @@ if __name__ == "__main__":
     front_indices = pareto_front(rows, objectives)
 
     assert len(front_indices) > 0
-    print(f"  ✓ Pareto optimal candidate indices: {front_indices}")
+    print(f"  âœ“ Pareto optimal candidate indices: {front_indices}")
     for idx in front_indices:
         p = rows[idx]
         print(f"    * Index {idx}: {p['label']} (Bits: {p['effective_bits']}, Weight Err: {p['weight_error']})")
