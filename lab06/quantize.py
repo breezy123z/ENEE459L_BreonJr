@@ -363,8 +363,8 @@ if __name__ == "__main__":
     assert len(q_pt.codes) == test_tensor.parameters
     assert q_pt.scale_count == 1
     assert q_pc.scale_count == test_tensor.channels
-    print(f"  âœ“ Per-tensor quantized:  {len(q_pt.codes)} codes, {q_pt.scale_count} scale")
-    print(f"  âœ“ Per-channel quantized: {len(q_pc.codes)} codes, {q_pc.scale_count} scales")
+    print(f"  ✓ Per-tensor quantized:  {len(q_pt.codes)} codes, {q_pt.scale_count} scale")
+    print(f"  ✓ Per-channel quantized: {len(q_pc.codes)} codes, {q_pc.scale_count} scales")
 
     # -----------------------------------------------------------------
     # 2. Test dequantize
@@ -376,7 +376,7 @@ if __name__ == "__main__":
     assert deq_pt.shape == test_tensor.shape
     assert len(deq_pt.data) == len(test_tensor.data)
     assert deq_pc.shape == test_tensor.shape
-    print(f"  âœ“ Reconstructed tensor shape: {deq_pt.shape}, dtype: {deq_pt.dtype}")
+    print(f"  ✓ Reconstructed tensor shape: {deq_pt.shape}, dtype: {deq_pt.dtype}")
 
     # -----------------------------------------------------------------
     # 3. Test quantization_error
@@ -386,8 +386,8 @@ if __name__ == "__main__":
     err_pc = quantization_error([test_tensor], [deq_pc])
 
     assert err_pt["relative"] >= 0.0 and err_pc["relative"] >= 0.0
-    print(f"  âœ“ Per-tensor relative error:  {err_pt['relative']:.6f} (max_abs: {err_pt['max_abs']:.6f})")
-    print(f"  âœ“ Per-channel relative error: {err_pc['relative']:.6f} (max_abs: {err_pc['max_abs']:.6f})")
+    print(f"  ✓ Per-tensor relative error:  {err_pt['relative']:.6f} (max_abs: {err_pt['max_abs']:.6f})")
+    print(f"  ✓ Per-channel relative error: {err_pc['relative']:.6f} (max_abs: {err_pc['max_abs']:.6f})")
 
     # -----------------------------------------------------------------
     # 4. Test bytes_stored
@@ -400,10 +400,10 @@ if __name__ == "__main__":
 
     assert bytes_fp32 > bytes_fp16 > bytes_int8_pt
     assert bytes_int8_pc >= bytes_int8_pt  # per-channel carries scale/zero per output channel
-    print(f"  âœ“ FP32 bytes:            {bytes_fp32} B")
-    print(f"  âœ“ FP16 bytes:            {bytes_fp16} B")
-    print(f"  âœ“ INT8 per-tensor bytes: {bytes_int8_pt} B")
-    print(f"  âœ“ INT8 per-channel bytes:{bytes_int8_pc} B")
+    print(f"  ✓ FP32 bytes:            {bytes_fp32} B")
+    print(f"  ✓ FP16 bytes:            {bytes_fp16} B")
+    print(f"  ✓ INT8 per-tensor bytes: {bytes_int8_pt} B")
+    print(f"  ✓ INT8 per-channel bytes:{bytes_int8_pc} B")
 
     # -----------------------------------------------------------------
     # 5. Test effective_bits
@@ -417,10 +417,10 @@ if __name__ == "__main__":
     assert eff_fp32 == 32.0
     assert eff_fp16 == 16.0
     assert eff_int8_pc > 8.0  # accounts for scales and zeros overhead
-    print(f"  âœ“ FP32 effective bits:            {eff_fp32:.4f}")
-    print(f"  âœ“ FP16 effective bits:            {eff_fp16:.4f}")
-    print(f"  âœ“ INT8 per-tensor effective bits: {eff_int8_pt:.4f}")
-    print(f"  âœ“ INT8 per-channel effective bits:{eff_int8_pc:.4f}")
+    print(f"  ✓ FP32 effective bits:            {eff_fp32:.4f}")
+    print(f"  ✓ FP16 effective bits:            {eff_fp16:.4f}")
+    print(f"  ✓ INT8 per-tensor effective bits: {eff_int8_pt:.4f}")
+    print(f"  ✓ INT8 per-channel effective bits:{eff_int8_pc:.4f}")
 
     # -----------------------------------------------------------------
     # 6. Test precision_row
@@ -466,7 +466,7 @@ if __name__ == "__main__":
             all_values=all_act_vals,
         )
         rows.append(row)
-        print(f"  âœ“ {row['label']:<32} | W_Err: {row['weight_error']:<8.6f} | Act_Err: {row['activation_error']:<8.6f} | Bits: {row['effective_bits']:<6.3f}")
+        print(f"  ✓ {row['label']:<32} | W_Err: {row['weight_error']:<8.6f} | Act_Err: {row['activation_error']:<8.6f} | Bits: {row['effective_bits']:<6.3f}")
 
     # -----------------------------------------------------------------
     # 7. Test pareto_front & Save Output
@@ -480,7 +480,7 @@ if __name__ == "__main__":
     front_indices = pareto_front(rows, objectives)
 
     assert len(front_indices) > 0
-    print(f"  âœ“ Pareto optimal candidate indices: {front_indices}")
+    print(f"  ✓ Pareto optimal candidate indices: {front_indices}")
     for idx in front_indices:
         p = rows[idx]
         print(f"    * Index {idx}: {p['label']} (Bits: {p['effective_bits']}, Weight Err: {p['weight_error']})")

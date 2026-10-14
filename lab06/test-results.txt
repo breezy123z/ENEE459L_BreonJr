@@ -1,36 +1,36 @@
 
 [1/7] Testing quantize_tensor...
-  âœ“ Per-tensor quantized:  540 codes, 1 scale
-  âœ“ Per-channel quantized: 540 codes, 20 scales
+  ✓ Per-tensor quantized:  540 codes, 1 scale
+  ✓ Per-channel quantized: 540 codes, 20 scales
 
 [2/7] Testing dequantize...
-  âœ“ Reconstructed tensor shape: (20, 3, 3, 3), dtype: fp32
+  ✓ Reconstructed tensor shape: (20, 3, 3, 3), dtype: fp32
 
 [3/7] Testing quantization_error...
-  âœ“ Per-tensor relative error:  0.005666 (max_abs: 0.004096)
-  âœ“ Per-channel relative error: 0.003737 (max_abs: 0.003751)
+  ✓ Per-tensor relative error:  0.005666 (max_abs: 0.004096)
+  ✓ Per-channel relative error: 0.003737 (max_abs: 0.003751)
 
 [4/7] Testing bytes_stored...
-  âœ“ FP32 bytes:            46960 B
-  âœ“ FP16 bytes:            23480 B
-  âœ“ INT8 per-tensor bytes: 11772 B
-  âœ“ INT8 per-channel bytes:12460 B
+  ✓ FP32 bytes:            46960 B
+  ✓ FP16 bytes:            23480 B
+  ✓ INT8 per-tensor bytes: 11772 B
+  ✓ INT8 per-channel bytes:12460 B
 
 [5/7] Testing effective_bits...
-  âœ“ FP32 effective bits:            32.0000
-  âœ“ FP16 effective bits:            16.0000
-  âœ“ INT8 per-tensor effective bits: 8.0218
-  âœ“ INT8 per-channel effective bits:8.4906
+  ✓ FP32 effective bits:            32.0000
+  ✓ FP16 effective bits:            16.0000
+  ✓ INT8 per-tensor effective bits: 8.0218
+  ✓ INT8 per-channel effective bits:8.4906
 
 [6/7] Testing precision_row...
-  âœ“ FP32 Baseline                    | W_Err: 0.000000 | Act_Err: 0.000000 | Bits: 32.000
-  âœ“ FP16                             | W_Err: 0.000201 | Act_Err: 0.000208 | Bits: 16.000
-  âœ“ INT8 Per-Tensor (All)            | W_Err: 0.005937 | Act_Err: 0.002975 | Bits: 8.022 
-  âœ“ INT8 Per-Channel (All)           | W_Err: 0.003893 | Act_Err: 0.002975 | Bits: 8.491 
-  âœ“ INT8 Per-Channel (Class 0 Only)  | W_Err: 0.003893 | Act_Err: 0.649202 | Bits: 8.491 
+  ✓ FP32 Baseline                    | W_Err: 0.000000 | Act_Err: 0.000000 | Bits: 32.000
+  ✓ FP16                             | W_Err: 0.000201 | Act_Err: 0.000208 | Bits: 16.000
+  ✓ INT8 Per-Tensor (All)            | W_Err: 0.005937 | Act_Err: 0.002975 | Bits: 8.022
+  ✓ INT8 Per-Channel (All)           | W_Err: 0.003893 | Act_Err: 0.002975 | Bits: 8.491
+  ✓ INT8 Per-Channel (Class 0 Only)  | W_Err: 0.003893 | Act_Err: 0.649202 | Bits: 8.491
 
 [7/7] Testing pareto_front...
-  âœ“ Pareto optimal candidate indices: (0, 1, 2, 3, 4)
+  ✓ Pareto optimal candidate indices: (0, 1, 2, 3, 4)
     * Index 0: FP32 Baseline (Bits: 32.0, Weight Err: 0.0)
     * Index 1: FP16 (Bits: 16.0, Weight Err: 0.00020098)
     * Index 2: INT8 Per-Tensor (All) (Bits: 8.0218, Weight Err: 0.00593672)

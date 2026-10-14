@@ -18,7 +18,14 @@ October 14, 2026. Instructor revision: 9400d1f.
    quantization_test_results.json exactly equals sample_quantization_results.json.
 7. Added activation_pareto_analysis.json to explain a limitation of the default
    objective choice while preserving the instructor's required report.
-8. Jetson deployment and verification pending at this commit.
+8. Connected to the Jetson, confirmed the existing repository was clean on
+   solution5, fetched fork/solution6, and switched to solution6 in place.
+9. Ran python3 main.py and python3 -m unittest -v test_quantize.py on the
+   Jetson: all 17 tests passed in 0.217 seconds, including exact reference
+   equality. No dependencies were installed. The output is at
+   /home/student/ENEE459L/lab06/quantization_test_results.json.
+10. Confirmed the quantize.py syntax tree is identical to instructor revision
+    9400d1f: only explanatory comments were added to the supplied algorithms.
 
 ## What each stage does
 
