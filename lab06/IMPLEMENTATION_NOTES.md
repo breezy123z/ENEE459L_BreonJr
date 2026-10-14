@@ -25,7 +25,10 @@ October 14, 2026. Instructor revision: 9400d1f.
 7. Kept main.py as the README-compatible entry point and saved the latest local
    test run in test-results.txt. The extra activation-aware Pareto report is
    unchanged because the required numerical outputs match.
-8. Rewritten code is awaiting a fresh Jetson verification at this commit.
+8. Updated the clean Jetson solution6 checkout from the personal fork only
+   (git fetch fork solution6, then a fast-forward merge). Did not retrieve
+   instructor changes. All 19 tests passed on the rewritten code, including
+   exact reference equality. Jetson log: /tmp/lab06-rewrite-tests.txt.
 
 ## What each stage does
 

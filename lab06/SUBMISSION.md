@@ -14,5 +14,5 @@ Run from lab06:
 The seven assignment functions were rewritten from the supplied handout after
 initially reviewing the provided implementation. The original supplied version
 remains in Git history at b7822d9. Helpers, data types, and sample experiment
-remain instructor-provided. All 19 local tests pass, including exact comparison
+remain instructor-provided. All 19 tests pass locally and on the Jetson, including exact comparison
 with the sample output. No later instructor changes were pulled for the rewrite.
