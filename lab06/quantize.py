@@ -118,224 +118,238 @@ def quantize_tensor(t: Tensor, bits: int = DEFAULT_BITS,
                     clip: str = "minmax",
                     percentile: float = DEFAULT_PERCENTILE,
                     given_range: tuple[float, float] | None = None) -> Quantized:
+    """Encode weights using one scale per tensor or output channel."""
+    # 1. Validate the policy and choose the available integer codes.
     if granularity not in GRANULARITIES:
-        raise TensorError(
-            f"unknown granularity {granularity!r}; known: {list(GRANULARITIES)}"
-        )
+        raise TensorError(f"unsupported granularity: {granularity!r}")
     if clip not in CLIP_METHODS:
-        raise TensorError(f"unknown clip method {clip!r}; known: {list(CLIP_METHODS)}")
-    # 1. Choose the integer bounds and the groups sharing a scale.
-    qmin, qmax = _qmin_qmax(bits, symmetric)
-    if granularity == "per_channel":
-        groups = [_channel_slice(t, c) for c in range(t.channels)]
-    else:
-        groups = [(0, len(t.data))]
-    codes = [0] * len(t.data)
-    scales: list[float] = []
-    zeros: list[int] = []
-    clipped = 0
+        raise TensorError(f"unsupported clipping method: {clip!r}")
+    lower_code, upper_code = _qmin_qmax(bits, symmetric)
+    slices = ([_channel_slice(t, channel) for channel in range(t.channels)]
+              if granularity == "per_channel" else [(0, t.parameters)])
 
-    # 2. Derive a scale/zero point from each group or calibration range.
-    for lo, hi in groups:
-        if given_range is not None:
-            rlo, rhi = float(given_range[0]), float(given_range[1])
-        else:
-            rlo, rhi = _range_of(t.data[lo:hi], clip, percentile, bits)
-        s, z = _scale_zero(rlo, rhi, bits, symmetric)
-        scales.append(s)
-        zeros.append(z)
 
-        # 3. Round to integer codes, count overflow, and clamp to bounds.
-        for i in range(lo, hi):
-            q = _round_half_up(t.data[i] / s) + z
-            if q < qmin or q > qmax:
-                clipped += 1
-            codes[i] = max(qmin, min(qmax, q))
+    # 2. Encode each group in order so the original tensor layout is preserved.
+    encoded = []
+    group_scales = []
+    group_zeros = []
+    overflow_count = 0
+    for first, stop in slices:
+        values = t.data[first:stop]
+        limits = (tuple(float(v) for v in given_range) if given_range is not None
+                  else _range_of(values, clip, percentile, bits))
+        scale, zero = _scale_zero(*limits, bits, symmetric)
+        group_scales.append(scale)
+        group_zeros.append(zero)
+
+        for value in values:
+            candidate = _round_half_up(value / scale) + zero
+            if candidate < lower_code:
+                encoded.append(lower_code)
+                overflow_count += 1
+            elif candidate > upper_code:
+                encoded.append(upper_code)
+                overflow_count += 1
+            else:
+                encoded.append(candidate)
+
+
+    # 3. Store the codes together with the metadata needed to decode them.
     return Quantized(
-        name=t.name, shape=tuple(t.shape), codes=tuple(codes),
-        scales=tuple(scales), zeros=tuple(zeros), bits=int(bits),
-        granularity=granularity, symmetric=bool(symmetric), clipped=clipped,
+        name=t.name, shape=tuple(t.shape), codes=tuple(encoded),
+        scales=tuple(group_scales), zeros=tuple(group_zeros), bits=int(bits),
+        granularity=granularity, symmetric=bool(symmetric), clipped=overflow_count,
     )
 
 
 def dequantize(qt: Quantized) -> Tensor:
-    # Each code uses the scale belonging to its output channel or tensor.
-    stride = qt.channel_stride if qt.granularity == "per_channel" else len(qt.codes)
-    if stride <= 0:
-        raise TensorError(f"{qt.name}: a group of {stride} values is not a group")
-    out = []
-    for i, q in enumerate(qt.codes):
-        g = i // stride
-        if g >= len(qt.scales):
-            raise TensorError(
-                f"{qt.name}: value {i} falls in group {g} and there are "
-                f"{len(qt.scales)} scales"
-            )
-        out.append(round(qt.scales[g] * (int(q) - qt.zeros[g]), 8))
-    return Tensor(name=qt.name, shape=qt.shape, data=tuple(out), dtype="fp32")
+    """Reconstruct floats from codes; rounding cannot restore lost precision."""
+    # 1. Determine how many consecutive values share a scale.
+    group_width = qt.channel_stride if qt.granularity == "per_channel" else len(qt.codes)
+    if group_width <= 0:
+        raise TensorError("quantized groups must contain values")
 
+
+    # 2. Decode one group at a time with value = scale * (code - zero).
+    reconstructed = []
+    for first in range(0, len(qt.codes), group_width):
+        group = first // group_width
+        if group >= len(qt.scales) or group >= len(qt.zeros):
+            raise TensorError(f"{qt.name}: missing scale or zero point for group {group}")
+        scale, zero = qt.scales[group], qt.zeros[group]
+        reconstructed.extend(
+            round(scale * (int(code) - zero), 8)
+            for code in qt.codes[first:first + group_width]
+        )
+    return Tensor(qt.name, qt.shape, tuple(reconstructed), "fp32")
 
 
 def quantization_error(before: Sequence[Tensor],
                        after: Sequence[Tensor]) -> dict[str, float]:
-    b = list(before)
-    a = list(after)
-    if len(b) != len(a):
-        raise TensorError(f"{len(b)} tensors against {len(a)}")
-    # Accumulate squared reconstruction error and original signal energy.
-    num = 0.0
-    den = 0.0
-    worst = 0.0
-    for x, y in zip(b, a):
-        if len(x.data) != len(y.data):
-            raise TensorError(
-                f"{x.name}: {len(x.data)} values against {len(y.data)}"
-            )
-        for u, v in zip(x.data, y.data):
-            d = u - v
-            num += d * d
-            den += u * u
-            worst = max(worst, abs(d))
+    """Compare original and reconstructed values using three error measures."""
+    # 1. Corresponding tensors must have matching numbers of values.
+    original, restored = list(before), list(after)
+    if len(original) != len(restored):
+        raise TensorError("original and reconstructed tensor counts differ")
+    squared_error = 0.0
+    squared_signal = 0.0
+    largest_error = 0.0
 
-    # The Frobenius norm is the square root of total squared error.
-    frob = math.sqrt(num)
-    return {
-        "frobenius": round(frob, 8),
-        "relative": round(frob / math.sqrt(den), 8) if den > 0.0 else 0.0,
-        "max_abs": round(worst, 8),
-    }
 
+    # 2. Accumulate across the whole model, before taking a square root.
+    for original_tensor, restored_tensor in zip(original, restored):
+        if len(original_tensor.data) != len(restored_tensor.data):
+            raise TensorError(f"{original_tensor.name}: tensor value counts differ")
+        for value, approximation in zip(original_tensor.data, restored_tensor.data):
+            difference = value - approximation
+            squared_error += difference ** 2
+            squared_signal += value ** 2
+            if abs(difference) > largest_error:
+                largest_error = abs(difference)
+
+
+    # 3. Follow the handout's zero-signal convention and round the report.
+    error_norm = math.sqrt(squared_error)
+    relative_error = error_norm / math.sqrt(squared_signal) if squared_signal > 0 else 0.0
+    return {"frobenius": round(error_norm, 8),
+            "relative": round(relative_error, 8),
+            "max_abs": round(largest_error, 8)}
 
 
 def bytes_stored(tensors: Sequence[Tensor], precision: str = "fp32",
                  granularity: str = "per_tensor") -> int:
+    """Account for the weight payload and INT8 scale/zero metadata."""
+    # 1. Validate both choices even when a floating format needs no metadata.
     if precision not in PRECISIONS:
-        raise TensorError(
-            f"unknown precision {precision!r}; known: {list(PRECISIONS)}"
-        )
+        raise TensorError(f"unsupported precision: {precision!r}")
     if granularity not in GRANULARITIES:
-        raise TensorError(
-            f"unknown granularity {granularity!r}; known: {list(GRANULARITIES)}"
-        )
-    # Weight payload plus one FP32 scale and INT32 zero per INT8 group.
-    per = dtype_bytes(precision)
-    total = 0.0
-    for t in tensors:
-        total += t.parameters * per
-        if precision == "int8":
-            groups = t.channels if granularity == "per_channel" else 1
-            total += groups * (SCALE_BYTES + ZERO_BYTES)
-    return int(total)
+        raise TensorError(f"unsupported granularity: {granularity!r}")
+
+
+    # 2. Floating formats need only weights; INT8 needs one pair per group.
+    stored = list(tensors)
+    payload = total_parameters(stored) * dtype_bytes(precision)
+    metadata = 0
+    if precision == "int8":
+        pair_count = (sum(t.channels for t in stored)
+                      if granularity == "per_channel" else len(stored))
+        metadata = pair_count * (SCALE_BYTES + ZERO_BYTES)
+    return int(payload + metadata)
 
 
 def effective_bits(tensors: Sequence[Tensor], precision: str = "fp32",
                    granularity: str = "per_tensor") -> float:
-    # Include metadata when converting total bytes to bits per parameter.
-    n = total_parameters(tensors)
-    if n <= 0:
-        raise TensorError("a model with no parameters has no bits per parameter")
-    return round(bytes_stored(tensors, precision, granularity) * 8.0 / n, 4)
+    """Express total storage as average bits per model parameter."""
+    stored = list(tensors)
+    parameter_count = total_parameters(stored)
+    if parameter_count <= 0:
+        raise TensorError("effective bits requires at least one parameter")
+    storage_bits = 8 * bytes_stored(stored, precision, granularity)
+    return round(storage_bits / parameter_count, 4)
 
 
 def precision_row(model_name: str, config: Mapping[str, Any],
                   tensors: Sequence[Tensor],
                   calibration_values: Sequence[float],
                   all_values: Sequence[float]) -> dict[str, Any]:
-    label = str(config.get("label") or config.get("precision") or "")
+    """Evaluate one weight policy and its activation calibration range."""
+    # 1. Require the label explicitly, as stated in the handout.
+    raw_label = config.get("label")
+    if raw_label is None or not str(raw_label).strip():
+        raise TensorError("each configuration needs a nonempty label")
+    label = str(raw_label)
     precision = str(config.get("precision", "fp32"))
     if precision not in PRECISIONS:
-        raise TensorError(
-            f"unknown precision {precision!r}; known: {list(PRECISIONS)}"
-        )
-    granularity = str(config.get("granularity", "per_tensor"))
+        raise TensorError(f"unsupported precision: {precision!r}")
+    grouping = str(config.get("granularity", "per_tensor"))
     symmetric = bool(config.get("symmetric", True))
-    clip = str(config.get("clip", "minmax"))
+    clipping = str(config.get("clip", "minmax"))
     percentile = float(config.get("percentile", DEFAULT_PERCENTILE))
     calibration = str(config.get("calibration", "all"))
-    if not label:
-        raise TensorError("a configuration with no label cannot be plotted")
+    original_weights = list(tensors)
 
-    # 1. Apply the weight precision policy, then reconstruct for comparison.
+
+    # 2. Reconstruct weights at the selected precision to measure their error.
+    restored_weights = []
+    scale_count = 0
+    for weight in original_weights:
+        if precision == "int8":
+            encoded = quantize_tensor(weight, DEFAULT_BITS, grouping,
+                                      symmetric, clipping, percentile)
+            restored_weights.append(dequantize(encoded))
+            scale_count += encoded.scale_count
+        elif precision == "fp16":
+            restored_weights.append(to_fp16(weight))
+        else:
+            restored_weights.append(weight)
+
+
+    # 3. Learn the activation range on calibration data; evaluate all values.
+    original_activations = as_tensor("activations", all_values)
+    clipped_fraction = 0.0
     if precision == "int8":
-        qs = [quantize_tensor(t, DEFAULT_BITS, granularity, symmetric, clip,
-                              percentile) for t in tensors]
-        after = [dequantize(q) for q in qs]
-        scale_count = sum(q.scale_count for q in qs)
-    elif precision == "fp16":
-        after = [to_fp16(t) for t in tensors]
-        scale_count = 0
+        limits = _range_of(calibration_values, clipping, percentile, DEFAULT_BITS)
+        encoded_activations = quantize_tensor(
+            original_activations, bits=DEFAULT_BITS, granularity="per_tensor",
+            symmetric=False, clip=clipping, percentile=percentile, given_range=limits,
+        )
+        restored_activations = dequantize(encoded_activations)
+        clipped_fraction = encoded_activations.clipped_fraction
     else:
-        after = list(tensors)
-        scale_count = 0
+        limits = (min(original_activations.data), max(original_activations.data))
+        restored_activations = (to_fp16(original_activations) if precision == "fp16"
+                                else original_activations)
 
 
-    # 2. Calibrate on selected samples but evaluate on every activation.
-    acts = as_tensor("activations", all_values)
-    if precision == "int8":
-        rlo, rhi = _range_of(calibration_values, clip, percentile, DEFAULT_BITS)
-        qa = quantize_tensor(acts, DEFAULT_BITS, "per_tensor", False, clip,
-                             percentile, given_range=(rlo, rhi))
-        act_after = dequantize(qa)
-        clipped = qa.clipped_fraction
-    else:
-        rlo, rhi = min(acts.data), max(acts.data)
-        act_after = to_fp16(acts) if precision == "fp16" else acts
-        clipped = 0.0
-
-
-    # 3. Record error, clipping, and storage together for this policy.
+    # 4. Keep storage, weight error, and activation error in the same record.
+    is_integer = precision == "int8"
     return {
-        "model": str(model_name),
-        "label": label,
-        "precision": precision,
-        "granularity": granularity if precision == "int8" else "n/a",
-        "symmetric": symmetric if precision == "int8" else None,
-        "calibration": calibration if precision == "int8" else "not calibrated",
-        "clip": clip if precision == "int8" else "n/a",
-        "parameters": total_parameters(tensors),
-        "weight_error": quantization_error(tensors, after)["relative"],
-        "activation_error": quantization_error([acts], [act_after])["relative"],
-        "clipped_fraction": clipped,
-        "activation_range": [round(float(rlo), 8), round(float(rhi), 8)],
+        "model": str(model_name), "label": label, "precision": precision,
+        "granularity": grouping if is_integer else "n/a",
+        "symmetric": symmetric if is_integer else None,
+        "calibration": calibration if is_integer else "not calibrated",
+        "clip": clipping if is_integer else "n/a",
+        "parameters": total_parameters(original_weights),
+        "weight_error": quantization_error(original_weights, restored_weights)["relative"],
+        "activation_error": quantization_error([original_activations], [restored_activations])["relative"],
+        "clipped_fraction": clipped_fraction,
+        "activation_range": [round(float(bound), 8) for bound in limits],
         "scale_count": scale_count,
-        "bytes_stored": bytes_stored(tensors, precision, granularity),
-        "effective_bits": effective_bits(tensors, precision, granularity),
+        "bytes_stored": bytes_stored(original_weights, precision, grouping),
+        "effective_bits": effective_bits(original_weights, precision, grouping),
     }
 
 
 def pareto_front(points: Sequence[Mapping[str, Any]],
                  objectives: Mapping[str, float]) -> tuple[int, ...]:
-    pts = list(points)
-    if not pts:
-        raise TensorError("no points to take a front over")
-    if not objectives:
-        raise TensorError("a front with no objectives is every point")
-    for name in objectives:
-        for k, p in enumerate(pts):
-            if p.get(name) is None:
-                raise TensorError(f"point {k} has no {name!r} to compare on")
-    # A point is dominated only if another is no worse on every objective
-    # and strictly better on at least one. Ties remain on the frontier.
-    front: list[int] = []
-    for i, a in enumerate(pts):
-        beaten = False
-        for j, b in enumerate(pts):
-            if i == j:
-                continue
-            better = False
-            worse = False
-            for name, sense in objectives.items():
-                d = (float(b[name]) - float(a[name])) * float(sense)
-                if d > 0.0:
-                    better = True
-                elif d < 0.0:
-                    worse = True
-            if better and not worse:
-                beaten = True
+    """Keep indices with no strictly dominating alternative; preserve ties."""
+    # 1. Convert each objective to a score where higher always means better.
+    candidates = list(points)
+    if not candidates or not objectives:
+        raise TensorError("Pareto comparison needs points and objectives")
+    scores = []
+    for index, point in enumerate(candidates):
+        row = []
+        for name, sense in objectives.items():
+            if point.get(name) is None:
+                raise TensorError(f"point {index} is missing objective {name!r}")
+            row.append(float(point[name]) * float(sense))
+        scores.append(tuple(row))
+
+
+    # 2. An alternative must be no worse everywhere and better somewhere.
+    survivors = []
+    for index, candidate in enumerate(scores):
+        dominated = False
+        for other in scores:
+            no_worse = all(b >= a for a, b in zip(candidate, other))
+            strictly_better = any(b > a for a, b in zip(candidate, other))
+            if no_worse and strictly_better:
+                dominated = True
                 break
-        if not beaten:
-            front.append(i)
-    return tuple(front)
+        if not dominated:
+            survivors.append(index)
+    return tuple(survivors)
 
 
 if __name__ == "__main__":

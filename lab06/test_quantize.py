@@ -120,6 +120,18 @@ class QuantizationTests(unittest.TestCase):
         objectives = dict(ref['objectives'], activation_error=-1)
         self.assertEqual(pareto_front(ref['configurations'], objectives), (0, 1, 2, 3))
 
+    def test_explicit_label_required(self):
+        t = as_tensor('x', [1, 2])
+        for config in ({'precision':'fp32'}, {'label':''}, {'label':'   '}, {'label':None}):
+            with self.subTest(config=config):
+                with self.assertRaises(TensorError):
+                    precision_row('x', config, [t], [0, 1], [0, 1])
+
+    def test_missing_quantized_metadata(self):
+        q = Quantized('x', (2, 1), (1, 2), (1., 1.), (0,), 8, 'per_channel', True)
+        with self.assertRaises(TensorError):
+            dequantize(q)
+
     def test_invalid_inputs(self):
         t = as_tensor('x', [1, 2])
         for kwargs in ({'bits':1}, {'granularity':'bad'}, {'clip':'bad'}, {'clip':'percentile','percentile':0}):

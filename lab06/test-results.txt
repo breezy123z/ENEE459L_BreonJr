@@ -46,8 +46,10 @@ test_calibration_selection (test_quantize.QuantizationTests.test_calibration_sel
 test_clipping_given_range (test_quantize.QuantizationTests.test_clipping_given_range) ... ok
 test_complete_reference (test_quantize.QuantizationTests.test_complete_reference) ... ok
 test_error_by_hand (test_quantize.QuantizationTests.test_error_by_hand) ... ok
+test_explicit_label_required (test_quantize.QuantizationTests.test_explicit_label_required) ... ok
 test_fp16_conversion_and_overflow (test_quantize.QuantizationTests.test_fp16_conversion_and_overflow) ... ok
 test_invalid_inputs (test_quantize.QuantizationTests.test_invalid_inputs) ... ok
+test_missing_quantized_metadata (test_quantize.QuantizationTests.test_missing_quantized_metadata) ... ok
 test_pareto_dominance_and_ties (test_quantize.QuantizationTests.test_pareto_dominance_and_ties) ... ok
 test_per_channel_scales (test_quantize.QuantizationTests.test_per_channel_scales) ... ok
 test_percentile_and_mse (test_quantize.QuantizationTests.test_percentile_and_mse) ... ok
@@ -58,6 +60,6 @@ test_symmetric_hand_example (test_quantize.QuantizationTests.test_symmetric_hand
 test_zero_and_constant_ranges (test_quantize.QuantizationTests.test_zero_and_constant_ranges) ... ok
 
 ----------------------------------------------------------------------
-Ran 17 tests in 0.274s
+Ran 19 tests in 0.112s
 
 OK

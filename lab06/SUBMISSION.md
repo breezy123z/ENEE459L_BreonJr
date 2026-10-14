@@ -11,6 +11,8 @@ Run from lab06:
     python3 main.py
     python3 -m unittest -v test_quantize.py
 
-The current instructor revision already supplied the seven algorithms. Our
-contributions are explanatory comments, the README-compatible entry point,
-independent validation, saved results, and analysis of the calibration tradeoff.
+The seven assignment functions were rewritten from the supplied handout after
+initially reviewing the provided implementation. The original supplied version
+remains in Git history at b7822d9. Helpers, data types, and sample experiment
+remain instructor-provided. All 19 local tests pass, including exact comparison
+with the sample output. No later instructor changes were pulled for the rewrite.

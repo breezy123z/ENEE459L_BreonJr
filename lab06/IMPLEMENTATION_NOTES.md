@@ -4,28 +4,28 @@ October 14, 2026. Instructor revision: 9400d1f.
 
 ## Steps taken and authorship
 
-1. Fetched instructor main and inspected the six new Lab 6 files.
-2. Created solution6 from solution5, merged the instructor update, and preserved
-   the original Lab 6 starter in Git and work/lab06-original.tar locally.
-3. Confirmed the latest quantize.py already implements all seven assignment
-   functions. These algorithms are supplied by the instructor, not authored
-   by us. We added explanatory comments without changing their calculations.
-4. Added main.py to run the existing experiment, matching the README command.
-   The original executable entry point remains python3 quantize.py.
-5. Added 17 independent tests covering arithmetic examples, calibration,
-   clipping, range choices, storage metadata, Pareto dominance, and errors.
-6. Ran the experiment and tests locally: all 17 passed. The entire generated
-   quantization_test_results.json exactly equals sample_quantization_results.json.
-7. Added activation_pareto_analysis.json to explain a limitation of the default
-   objective choice while preserving the instructor's required report.
-8. Connected to the Jetson, confirmed the existing repository was clean on
-   solution5, fetched fork/solution6, and switched to solution6 in place.
-9. Ran python3 main.py and python3 -m unittest -v test_quantize.py on the
-   Jetson: all 17 tests passed in 0.217 seconds, including exact reference
-   equality. No dependencies were installed. The output is at
-   /home/student/ENEE459L/lab06/quantization_test_results.json.
-10. Confirmed the quantize.py syntax tree is identical to instructor revision
-    9400d1f: only explanatory comments were added to the supplied algorithms.
+1. Initially fetched instructor revision 9400d1f and created solution6. That
+   revision already contained working solutions; our initial validation-only
+   version remains preserved at commit b7822d9.
+2. After receiving the six-page handout and the request to remake the code,
+   rewrote all seven assignment functions in quantize.py from its requirements.
+   The earlier solution had already been read; this is a fresh implementation
+   of the stated algorithms, not a claim of a blind or independent discovery.
+3. Did not fetch, pull, or merge subsequent instructor changes for this rewrite.
+   Retained the supplied Tensor/Quantized types, quantization helpers, FP16
+   helper, calibration selection, and executable sample experiment.
+4. Added simple numbered comments and spacing. The rewrite encodes groups in
+   sequence, decodes groups by slices, separates payload and metadata storage,
+   and uses objective scores to identify Pareto domination.
+5. Required an explicit nonempty configuration label as the handout states.
+   Added an explanatory TensorError for a missing decoding zero point.
+6. Expanded the independent arithmetic and edge-case suite from 17 to 19 tests.
+   All 19 passed locally; the complete generated report exactly matches the
+   existing sample_quantization_results.json.
+7. Kept main.py as the README-compatible entry point and saved the latest local
+   test run in test-results.txt. The extra activation-aware Pareto report is
+   unchanged because the required numerical outputs match.
+8. Rewritten code is awaiting a fresh Jetson verification at this commit.
 
 ## What each stage does
 
