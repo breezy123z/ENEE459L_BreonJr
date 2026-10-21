@@ -182,3 +182,8 @@ reproduce the report honestly. Image statistics are computed after JPEG decoding
 Updated the integration tests to use the new source; all 21 local tests pass.
 The earlier approved-image discussion describes history; SUBMISSION.md and
 output/frame_report.json now describe the live photograph, which is the final input.
+
+Final live-image verification: all 21 tests passed on the Jetson in 0.702 seconds.
+The submitted JPEG is byte-for-byte identical to the timestamped original.
+The committed report uses the Jetson population SD; desktop floating-point
+accumulation differed by less than 1e-13. No retake was performed.

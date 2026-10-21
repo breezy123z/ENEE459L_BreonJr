@@ -42,9 +42,10 @@ needed; this is not required for normal operation.
 - OpenCV cleaned up successfully. No image was saved in these feed tests.
 
 The raw session log is /tmp/lab07-feed-check.txt on the Jetson (temporary).
-A live stream check does not change the provenance of the submitted chessboard
-image, which remains TA-approved supplied data. Any new photo should be prompted
-and explicitly arranged before capture, as requested by the student.
+After the stream check, the student requested a new photograph and explicitly
+confirmed readiness. The source was captured once with take_selfie.capture_image
+and is now submitted as output/captured_frame.jpg, replacing the chessboard.
+Any future new photo should also be prompted and arranged before capture.
 
 ## Capture when ready
 

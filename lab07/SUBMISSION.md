@@ -27,7 +27,7 @@ From lab07:
 
 OpenCV and NumPy are required for image analysis; the Jetson already has both.
 The core arithmetic tests use standard Python. Image integration checks skip
-when image libraries are unavailable. All 21 tests passed locally with them installed.
+when image libraries are unavailable. All 21 tests passed locally and on the Jetson (0.702 seconds, no skipped tests).
 
 ## Actual capture
 

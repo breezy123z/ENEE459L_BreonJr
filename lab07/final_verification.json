@@ -19,6 +19,9 @@
   "camera_capture_performed": true,
   "analysis_on_saved_jpeg": true,
   "tests_passed_locally": 21,
-  "jetson_reverification": "pending updated implementation",
-  "report_command": "python3 frames.py --image output/captured_frame.jpg --image-origin live_camera_capture --output-dir output"
+  "report_command": "python3 frames.py --image output/captured_frame.jpg --image-origin live_camera_capture --output-dir output",
+  "tests_passed_on_jetson": 21,
+  "tests_skipped_on_jetson": 0,
+  "jetson_test_runtime_seconds": 0.702,
+  "original_capture_checksum_verified": true
 }
