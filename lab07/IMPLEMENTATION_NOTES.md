@@ -160,3 +160,11 @@ therefore differ appropriately. Final results and reproduction commands are
 in SUBMISSION.md. 1080p prelab predictions and the instructor example remain
 separate. This image completes the analysis task under the reported approval;
 physical CSI sensor detection remains unresolved and is not claimed fixed.
+
+## Subsequent camera resolution
+
+After finalizing the supplied-image submission, the user requested Jetson-IO
+configuration. Enabled IMX219 Dual on header 2, rebooted once, and verified
+20 valid OpenCV frames. See CAMERA_SETUP.md. Earlier statements that no overlay
+was active and capture was unavailable describe the earlier submission state.
+The approved PNG remains the submitted input; no additional photo was saved.

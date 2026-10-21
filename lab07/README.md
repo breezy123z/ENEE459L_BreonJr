@@ -8,7 +8,8 @@ python3 -m unittest -v test_frames.py
 ```
 
 The student reports TA approval to use this supplied image. Live camera
-capture is optional for this submission; its detection problem remains recorded.
+capture is optional for this submission. The camera was subsequently enabled
+with Jetson-IO and verified with 20 valid frames; see CAMERA_SETUP.md.
 
 ---
 
