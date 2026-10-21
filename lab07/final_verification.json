@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-21",
+  "platform": "Jetson Orin Nano Super",
+  "input": "output/all_focus_s1_1.0_s2_3.0.png",
+  "input_source": "supplied_image",
+  "image_sha256": "d97f9aff2066e9ec7902cf2df4d4e8a3db606f9250cf17ee45331bb8efca3eee",
+  "checksum_verified": true,
+  "tests_passed": 21,
+  "tests_skipped": 0,
+  "test_runtime_seconds": 0.509,
+  "command": "python3 frames.py --image output/all_focus_s1_1.0_s2_3.0.png --output-dir output",
+  "test_command": "python3 -m unittest -v test_frames.py",
+  "camera_capture_performed": false,
+  "approval_source": "Student reports TA approved use of this image"
+}

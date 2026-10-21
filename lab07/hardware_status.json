@@ -18,5 +18,9 @@
   "camera_required_for_submission": false,
   "camera_overlay_activated": false,
   "reboot_performed": false,
-  "file_input_local_tests_passed": 21
+  "file_input_local_tests_passed": 21,
+  "file_input_jetson_tests_passed": 21,
+  "file_input_jetson_test_runtime_seconds": 0.509,
+  "submission_status": "complete using TA-approved supplied image",
+  "analysis_report": "output/frame_report.json"
 }

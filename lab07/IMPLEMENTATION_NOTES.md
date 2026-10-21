@@ -150,8 +150,10 @@ records supplied_image and SHA-256; no claim of a fresh capture is made.
 The original capture route and take_selfie.py remain available for later use.
 Added two image integration tests: the source is preserved without camera
 access, image moments agree with independent NumPy calculations, and undecodable
-input raises FrameError. All 21 tests passed locally. Jetson verification of
-this file-input revision is recorded below after deployment.
+input raises FrameError. All 21 tests passed locally. The Jetson also passed all 21 tests (0.509 seconds) and generated the
+submitted report directly from the supplied PNG. Its SHA-256 was verified.
+Cross-platform SD differed by about 4e-14; the committed value is the Jetson
+result. This is floating-point arithmetic variation, not an image difference.
 
 The supplied image is 700 x 400, not the sample's 1920 x 1080; output numbers
 therefore differ appropriately. Final results and reproduction commands are

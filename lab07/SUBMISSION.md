@@ -24,7 +24,8 @@ From lab07 on the Jetson:
 
 OpenCV and NumPy are needed for image analysis; the Jetson already has both.
 The math and diagnostic unit tests need only Python. Image integration tests
-skip if OpenCV/NumPy are unavailable. All 21 tests passed locally with both installed.
+skip if OpenCV/NumPy are unavailable. All 21 tests passed locally and on the Jetson with both installed.
+The Jetson run took 0.509 seconds and produced the submitted frame report.
 
 ## Results for the supplied image
 
