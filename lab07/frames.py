@@ -215,6 +215,7 @@ def main(
     json_filename: str = "frame_report.json",
     target_fps: float = 30.0,
     input_image: str | None = None,
+    image_origin: str = "supplied_image",
 ) -> None:
     import cv2
     import numpy as np
@@ -225,7 +226,9 @@ def main(
     img_path = out_path / image_filename
     json_path = out_path / json_filename
 
-    # 1. Use the TA-approved image when supplied, or capture from the camera.
+    # 1. Analyze an existing image with stated provenance, or capture live.
+    if image_origin not in ("supplied_image", "live_camera_capture"):
+        raise FrameError("unsupported image origin")
     if input_image is not None:
         source_path = Path(input_image)
         frame_bgr = cv2.imread(str(source_path), cv2.IMREAD_COLOR)
@@ -234,7 +237,7 @@ def main(
         img_path = out_path / source_path.name
         if source_path.resolve() != img_path.resolve():
             shutil.copy2(source_path, img_path)
-        origin = "supplied_image"
+        origin = image_origin
     else:
         frame_bgr = grab_frame(gstreamer_pipeline())
         if not cv2.imwrite(str(img_path), frame_bgr):
@@ -303,6 +306,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Analyze a live frame or a supplied image.")
     parser.add_argument("--image", help="Use an existing image instead of opening the camera")
+    parser.add_argument("--image-origin", choices=("supplied_image", "live_camera_capture"),
+                        default="supplied_image", help="Provenance of an existing image")
     parser.add_argument("--output-dir", default=str(Path(__file__).resolve().parent / "output"))
     args = parser.parse_args()
-    main(output_dir=args.output_dir, input_image=args.image)
+    main(output_dir=args.output_dir, input_image=args.image, image_origin=args.image_origin)

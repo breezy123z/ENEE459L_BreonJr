@@ -1,15 +1,16 @@
-## Completed submission: approved image input
+## Completed submission: fresh Jetson camera image
 
-See [SUBMISSION.md](SUBMISSION.md) for results, image, tests, and provenance.
+See [SUBMISSION.md](SUBMISSION.md) for the photograph, results, and provenance.
+The earlier TA-provided image has been replaced by our real camera capture.
 
 ```bash
-python3 frames.py --image output/all_focus_s1_1.0_s2_3.0.png --output-dir output
+python3 frames.py --image output/captured_frame.jpg --image-origin live_camera_capture --output-dir output
 python3 -m unittest -v test_frames.py
 ```
 
-The student reports TA approval to use this supplied image. Live camera
-capture is optional for this submission. The camera was subsequently enabled
-with Jetson-IO and verified with 20 valid frames; see CAMERA_SETUP.md.
+The camera works after enabling the IMX219 Dual CSI configuration with Jetson-IO.
+Use the commands above to reproduce the report without taking a new picture.
+See CAMERA_SETUP.md for setup and optional future captures.
 
 ---
 

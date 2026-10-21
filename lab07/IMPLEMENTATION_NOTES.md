@@ -15,9 +15,9 @@ October 21, 2026. Instructor revision: 61d62aa (posting lab 7).
 - [x] Test independent small examples and instructor sample arithmetic.
 - [x] Generate explicitly computed pre-lab predictions.
 - [x] Verify the implementation and predictions on the Jetson.
-- [x] Use the supplied chessboard image under the student-reported TA approval.
-- [x] Inspect the supplied image and its computed luma statistics (scene).
-- [x] Save the unchanged source PNG and its output/frame_report.json.
+- [x] Capture a fresh photograph using take_selfie.py after readiness confirmation.
+- [x] Inspect the fresh camera image and its computed luma statistics (scene).
+- [x] Save the captured JPEG and its output/frame_report.json.
 - [x] Review the supplied seven-page ELMS handout for additional requirements.
 
 ## Steps taken
@@ -168,3 +168,17 @@ configuration. Enabled IMX219 Dual on header 2, rebooted once, and verified
 20 valid OpenCV frames. See CAMERA_SETUP.md. Earlier statements that no overlay
 was active and capture was unavailable describe the earlier submission state.
 The approved PNG remains the submitted input; no additional photo was saved.
+
+## Final replacement with a real camera photograph
+
+The student then asked to replace the TA alternative with a live capture and
+confirmed readiness. Captured once with take_selfie.capture_image at Jetson
+local timestamp 20261021_135556, saving a 960 x 540 JPEG after ten warmup reads.
+Verified the image visually and copied it byte-for-byte to output/captured_frame.jpg.
+Removed the old chessboard PNG from the current branch; it remains in Git history.
+Regenerated the report from the saved JPEG (no second capture), with explicit
+live_camera_capture provenance and SHA-256. Added an image-origin argument to
+reproduce the report honestly. Image statistics are computed after JPEG decoding.
+Updated the integration tests to use the new source; all 21 local tests pass.
+The earlier approved-image discussion describes history; SUBMISSION.md and
+output/frame_report.json now describe the live photograph, which is the final input.

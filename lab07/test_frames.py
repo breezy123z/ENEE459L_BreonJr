@@ -135,24 +135,24 @@ class SuppliedImageTests(unittest.TestCase):
         import hashlib
         from frames import main
         root = Path(__file__).parent
-        image = root / 'output/all_focus_s1_1.0_s2_3.0.png'
+        image = root / 'output/captured_frame.jpg'
         with tempfile.TemporaryDirectory() as directory:
             with patch('frames.grab_frame', side_effect=AssertionError('camera must not open')):
-                main(output_dir=directory, input_image=str(image))
+                main(output_dir=directory, input_image=str(image), image_origin='live_camera_capture')
             destination=Path(directory)/image.name
             self.assertEqual(destination.read_bytes(),image.read_bytes())
             report=json.loads((Path(directory)/'frame_report.json').read_text())
             meta=report['capture_metadata']
-            self.assertEqual(meta['input_source'],'supplied_image')
-            self.assertEqual((meta['width'],meta['height']),(700,400))
+            self.assertEqual(meta['input_source'],'live_camera_capture')
+            self.assertEqual((meta['width'],meta['height']),(960,540))
             self.assertEqual(meta['image_sha256'],hashlib.sha256(image.read_bytes()).hexdigest())
             gray=cv2.cvtColor(cv2.imread(str(image)),cv2.COLOR_BGR2GRAY).astype(np.float32)/255.
             stats=report['frame_analysis']['stats']
-            self.assertEqual(stats['samples'],280000.)
+            self.assertEqual(stats['samples'],518400.)
             self.assertAlmostEqual(stats['mean'],float(np.mean(gray,dtype=np.float64)),places=12)
             self.assertAlmostEqual(stats['sd'],float(np.std(gray,dtype=np.float64)),places=10)
             self.assertEqual(report['frame_analysis']['classification'],'scene')
-            self.assertEqual(report['memory_pricing']['bandwidth_bytes_per_sec']['bgr_live_stream'],25200000.)
+            self.assertEqual(report['memory_pricing']['bandwidth_bytes_per_sec']['bgr_live_stream'],46656000.)
 
     def test_unreadable_input(self):
         try:
