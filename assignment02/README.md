@@ -1,3 +1,16 @@
+## Single-file upload
+
+If only one Python file is accepted, submit **Assignment2.py**.
+It includes arithmetic_intensity, Graph/Layer support, the named helpers, and an
+embedded example. It runs by itself with no other files or third-party packages:
+
+    python Assignment2.py
+
+Verified by copying only that file to an empty directory and running Python
+in isolated mode. Its result exactly matches the modular version, and all
+15 existing requirement tests pass against its implementation.
+The other files below are optional modular development/report artifacts.
+
 # Assignment 2 - Arithmetic intensity
 
 ## What the assignment asks
