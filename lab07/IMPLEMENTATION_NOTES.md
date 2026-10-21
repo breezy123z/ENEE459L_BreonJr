@@ -14,7 +14,7 @@ October 21, 2026. Instructor revision: 61d62aa (posting lab 7).
 - [x] Implement summarise_formats: all seven formats against RGB baseline.
 - [x] Test independent small examples and instructor sample arithmetic.
 - [x] Generate explicitly computed pre-lab predictions.
-- [ ] Verify the implementation and predictions on the Jetson.
+- [x] Verify the implementation and predictions on the Jetson.
 - [ ] Capture a new image from the student's physical camera.
 - [ ] Inspect image and measured luma statistics; resolve black/flat/dark issues.
 - [ ] Save this run's output/captured_frame.jpg and output/frame_report.json.
@@ -99,3 +99,27 @@ Read the image visually and output/frame_report.json. Do not expect real scene
 statistics or absolute image paths to equal the instructor sample. Only the
 same-dimension arithmetic should match. prelab_predictions.json is calculated
 and deliberately contains no measured scene or invented hardware statistics.
+
+## Jetson verification outcome
+
+Updated the clean existing checkout from solution6 to solution7 on October 21.
+Ran prelab.py and all 18 tests successfully on the board (0.014 seconds).
+The reference arithmetic comparison passed; prelab predictions are identical.
+Attempted one real capture with a 35-second external timeout safeguard. Argus
+reported "No cameras available" and the read failed with "Camera opened, but
+failed to capture a valid frame." Device enumeration returned []. No new
+image or measured scene report was produced. Did not restart services or change
+camera/system configuration. Raw session logs remain on the Jetson at
+/tmp/lab07-tests.txt and /tmp/lab07-capture.txt (temporary, may vanish at reboot).
+
+In class, check the sensor connection with staff; camera ribbons should be
+handled only with board power off. Once the camera is available, run:
+
+    cd /home/student/ENEE459L/lab07
+    python3 frames.py
+
+Inspect output/captured_frame.jpg and output/frame_report.json. Confirm that
+the scene is real, neither black nor suspiciously flat, and its width/height
+match expectations. If a valid scene is dark, improve lighting and retake.
+Use git status, then add only the new output artifacts before committing them.
+A different scene naturally produces different stats from the sample.
