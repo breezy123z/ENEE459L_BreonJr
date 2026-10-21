@@ -24,11 +24,11 @@ class FrameTests(unittest.TestCase):
 
     def test_bandwidth(self):
         self.assertEqual(bytes_per_second(4,2,'bgr',2.5),60.)
-        self.assertEqual(bytes_per_second(4,2,'bgr',0),0.)
 
     def test_conversion_read_write(self):
         self.assertEqual(conversion_bytes(4,2,'nv12','bgr'),36)
-        self.assertEqual(conversion_bytes(4,2,'bgr','bgr'),48)
+        self.assertEqual(conversion_bytes(4,2,'bgr','bgr'),0)
+        self.assertEqual(conversion_bytes(4,2,'BGR','bgr'),0)
 
     def test_resize_and_normalize(self):
         self.assertEqual(resize_bytes(4,2,2,2,'rgb'),36)
@@ -75,11 +75,18 @@ class FrameTests(unittest.TestCase):
         stats={'max':.5,'mean':.1,'spread':FLAT_SPREAD}
         self.assertEqual(classify(stats)[0],'scene')
 
+    def test_classification_missing_metrics(self):
+        for key in ('max', 'spread', 'mean'):
+            stats={'max':1., 'spread':1., 'mean':.5}
+            del stats[key]
+            with self.subTest(key=key):
+                with self.assertRaises(FrameError): classify(stats)
+
     def test_bad_inputs(self):
         for dims in ((0,2),(-1,2),(2.5,2),(True,2)):
             with self.assertRaises(FrameError): frame_bytes(*dims,'rgb')
         with self.assertRaises(FrameError): frame_bytes(2,2,'bad')
-        for rate in (-1,float('nan'),float('inf')):
+        for rate in (0,-1,float('nan'),float('inf')):
             with self.assertRaises(FrameError): bytes_per_second(2,2,'rgb',rate)
         for pixels in ([],[float('nan')],[-.1],[1.1]):
             with self.assertRaises(FrameError): frame_stats(pixels)

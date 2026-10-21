@@ -132,40 +132,38 @@ def frame_bytes(width: int, height: int, fmt: str) -> int:
 def bytes_per_second(width: int, height: int, fmt: str, fps: float) -> float:
     """Predicted payload rate at an assumed FPS, not measured bus traffic."""
     rate = float(fps)
-    if not math.isfinite(rate) or rate < 0:
-        raise FrameError("fps must be finite and nonnegative")
+    if not math.isfinite(rate) or rate <= 0:
+        raise FrameError("fps must be finite and positive")
     return frame_bytes(width, height, fmt) * rate
 
 
 def frame_stats(pixels: Sequence[float] | Iterable[float]) -> dict[str, float]:
-    """Summarize normalized luma with a streaming population variance."""
-    # 1. Welford's update accepts generators without storing another frame.
-    count = 0
-    mean = 0.0
-    squared_deviations = 0.0
-    low, high = math.inf, -math.inf
-    for pixel in pixels:
-        value = float(pixel)
-        if not math.isfinite(value) or not 0 <= value <= 1:
-            raise FrameError("luma values must be finite and in [0, 1]")
-        count += 1
-        delta = value - mean
-        mean += delta / count
-        squared_deviations += delta * (value - mean)
-        low, high = min(low, value), max(high, value)
-    if count == 0:
+    """Calculate normalized-luma moments using the handout's two-pass method."""
+    # 1. Materialize the iterable so both passes use the same samples.
+    values = [float(pixel) for pixel in pixels]
+    if not values:
         raise FrameError("cannot analyze an empty frame")
+    if any(not math.isfinite(value) or not 0 <= value <= 1 for value in values):
+        raise FrameError("luma values must be finite and in [0, 1]")
 
 
-    # 2. Population SD describes this frame, rather than an estimated population.
+    # 2. Find the mean, then the population variance around that mean.
+    count = len(values)
+    low, high = min(values), max(values)
+    mean = sum(values) / count
+    variance = sum((value - mean) ** 2 for value in values) / count
     return {"min": low, "max": high, "mean": mean, "spread": high - low,
-            "sd": math.sqrt(max(0.0, squared_deviations / count)),
-            "samples": float(count)}
+            "sd": math.sqrt(variance), "samples": float(count)}
 
 
 def classify(stats: dict[str, float]) -> tuple[str, str]:
     """Apply black, flat, dark, and structured-scene checks in that order."""
-    # 1. A black sensor is different from an ordinary dark scene.
+    # 1. Check the required metrics before applying the ordered rules.
+    missing = [key for key in ("max", "spread", "mean") if key not in stats]
+    if missing:
+        raise FrameError(f"missing classification metrics: {missing}")
+
+    # A black sensor is different from an ordinary dark scene.
     if stats["max"] <= BLACK_MAX:
         return "black", f"max {stats['max']:.4f} <= {BLACK_MAX:.4f}. No usable signal."
     if stats["spread"] < FLAT_SPREAD:
@@ -176,7 +174,9 @@ def classify(stats: dict[str, float]) -> tuple[str, str]:
 
 
 def conversion_bytes(width: int, height: int, src: str, dst: str) -> int:
-    """One complete source read plus one complete destination write."""
+    """No traffic for an unchanged format; otherwise one read plus one write."""
+    if src.lower() == dst.lower():
+        return 0
     return frame_bytes(width, height, src) + frame_bytes(width, height, dst)
 
 

@@ -3,6 +3,7 @@ test_bandwidth (test_frames.FrameTests.test_bandwidth) ... ok
 test_black_priority (test_frames.FrameTests.test_black_priority) ... ok
 test_capture_releases_on_failure (test_frames.FrameTests.test_capture_releases_on_failure) ... ok
 test_capture_releases_on_success (test_frames.FrameTests.test_capture_releases_on_success) ... ok
+test_classification_missing_metrics (test_frames.FrameTests.test_classification_missing_metrics) ... ok
 test_conversion_read_write (test_frames.FrameTests.test_conversion_read_write) ... ok
 test_dark_structured (test_frames.FrameTests.test_dark_structured) ... ok
 test_flat_not_black (test_frames.FrameTests.test_flat_not_black) ... ok
@@ -18,6 +19,6 @@ test_thresholds (test_frames.FrameTests.test_thresholds) ... ok
 test_unopened_camera_released (test_frames.FrameTests.test_unopened_camera_released) ... ok
 
 ----------------------------------------------------------------------
-Ran 18 tests in 0.007s
+Ran 19 tests in 0.016s
 
 OK

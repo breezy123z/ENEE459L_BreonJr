@@ -18,7 +18,7 @@ October 21, 2026. Instructor revision: 61d62aa (posting lab 7).
 - [ ] Capture a new image from the student's physical camera.
 - [ ] Inspect image and measured luma statistics; resolve black/flat/dark issues.
 - [ ] Save this run's output/captured_frame.jpg and output/frame_report.json.
-- [ ] Review any separate ELMS handout for additional in-class requirements.
+- [x] Review the supplied seven-page ELMS handout for additional requirements.
 
 ## Steps taken
 
@@ -28,8 +28,7 @@ October 21, 2026. Instructor revision: 61d62aa (posting lab 7).
    and merged the new Lab 7 files. Previous solutions remain preserved.
 3. Saved the original Lab 7 in Git and local work/lab07-original.tar.
 4. Wrote the eight stubs with simple comments and input validation. Statistics
-   use Welford's streaming population variance, accepting generators without
-   another full-frame list. Classification uses normalized [0,1] luma.
+   materialize a list and use the handout's two-pass population variance. Classification uses normalized [0,1] luma.
 5. Made OpenCV/NumPy imports local to hardware capture so the pure functions
    and prelab.py run using only standard Python. Kept the provided GStreamer
    pipeline and warmup procedure. Added camera release on open failure and an
@@ -123,3 +122,16 @@ the scene is real, neither black nor suspiciously flat, and its width/height
 match expectations. If a valid scene is dark, improve lighting and retake.
 Use git status, then add only the new output artifacts before committing them.
 A different scene naturally produces different stats from the sample.
+
+## Review against the seven-page handout
+
+The supplied October 21 handout specifies all eight functions and does not
+require a selfie, any particular photo subject, or a series of different photos.
+The suggested well-lit desk scene was our recommendation, not an assignment rule.
+The handout also does not request additional measured FPS/jitter comparisons.
+
+Updated the pre-lab implementation to reject zero FPS, return zero for same-format
+conversion (case-insensitive), check classification keys explicitly, and use
+the specified materialized-list/two-pass population-variance calculation.
+Earlier 18-test board results preceded these corrections; the revised 19-test
+suite must be verified separately. Arithmetic for the sample remains unchanged.
