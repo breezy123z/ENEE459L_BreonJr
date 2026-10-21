@@ -133,5 +133,6 @@ The handout also does not request additional measured FPS/jitter comparisons.
 Updated the pre-lab implementation to reject zero FPS, return zero for same-format
 conversion (case-insensitive), check classification keys explicitly, and use
 the specified materialized-list/two-pass population-variance calculation.
-Earlier 18-test board results preceded these corrections; the revised 19-test
-suite must be verified separately. Arithmetic for the sample remains unchanged.
+Earlier 18-test board results preceded these corrections. The revised 19-test
+suite passes locally and on the Jetson (0.015 seconds); board log:
+/tmp/lab07-handout-tests.txt. Arithmetic for the sample remains unchanged.
