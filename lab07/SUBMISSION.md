@@ -56,5 +56,7 @@ The scene label describes the image's brightness/contrast, not the local sensor.
 PNG disk file size differs from the uncompressed frame footprint.
 
 The physical camera troubleshooting is no longer a submission prerequisite
-under the student's reported TA approval. No camera overlay was activated and
-no reboot was performed. Earlier diagnostic evidence remains documented.
+under the student's reported TA approval. After this submission was finalized, the user requested camera setup.
+Jetson-IO enabled the IMX219 Dual CSI profile; after reboot, OpenCV read
+20 valid 960 x 540 BGR frames. No new photo was saved and the approved supplied
+image remains the submitted input. See CAMERA_SETUP.md for the procedure.

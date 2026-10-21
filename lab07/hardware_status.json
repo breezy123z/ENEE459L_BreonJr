@@ -5,22 +5,32 @@
   "opencv_version": "4.8.0",
   "gstreamer_build_support": true,
   "gstreamer_version": "1.20.3",
-  "video_device_nodes": [],
+  "video_device_nodes": [
+    "/dev/video0"
+  ],
   "tests_passed": 19,
   "test_runtime_seconds": 0.015,
-  "camera_capture_status": "unavailable",
+  "camera_capture_status": "working: live frames verified, no new photo saved",
   "capture_error": "No cameras available",
   "fresh_image_produced": false,
   "fresh_scene_report_produced": false,
   "source": "SSH session: OpenCV build information, device enumeration, tests, and camera capture attempt",
-  "note": "This records environment checks; prelab_predictions.json contains computed quantities.",
+  "note": "Camera fixed after approved-image submission was finalized. The submitted image/report remain based on the TA-approved PNG.",
   "submission_input": "TA-approved supplied image (approval reported by student)",
   "camera_required_for_submission": false,
-  "camera_overlay_activated": false,
-  "reboot_performed": false,
+  "camera_overlay_activated": true,
+  "reboot_performed": true,
   "file_input_local_tests_passed": 21,
   "file_input_jetson_tests_passed": 21,
   "file_input_jetson_test_runtime_seconds": 0.509,
   "submission_status": "complete using TA-approved supplied image",
-  "analysis_report": "output/frame_report.json"
+  "analysis_report": "output/frame_report.json",
+  "csi_profile": "Camera IMX219 Dual",
+  "valid_live_frames": 20,
+  "live_frame_shape": [
+    540,
+    960,
+    3
+  ],
+  "live_frame_mean_pixel_value": 84.8697299382716
 }
