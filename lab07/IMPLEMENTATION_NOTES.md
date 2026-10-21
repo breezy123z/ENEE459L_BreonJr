@@ -15,9 +15,9 @@ October 21, 2026. Instructor revision: 61d62aa (posting lab 7).
 - [x] Test independent small examples and instructor sample arithmetic.
 - [x] Generate explicitly computed pre-lab predictions.
 - [x] Verify the implementation and predictions on the Jetson.
-- [ ] Capture a new image from the student's physical camera.
-- [ ] Inspect image and measured luma statistics; resolve black/flat/dark issues.
-- [ ] Save this run's output/captured_frame.jpg and output/frame_report.json.
+- [x] Use the supplied chessboard image under the student-reported TA approval.
+- [x] Inspect the supplied image and its computed luma statistics (scene).
+- [x] Save the unchanged source PNG and its output/frame_report.json.
 - [x] Review the supplied seven-page ELMS handout for additional requirements.
 
 ## Steps taken
@@ -136,3 +136,25 @@ the specified materialized-list/two-pass population-variance calculation.
 Earlier 18-test board results preceded these corrections. The revised 19-test
 suite passes locally and on the Jetson (0.015 seconds); board log:
 /tmp/lab07-handout-tests.txt. Arithmetic for the sample remains unchanged.
+
+## Finalization using the TA-approved supplied image
+
+The student reported that the TA approved all_focus_s1_1.0_s2_3.0.png as the
+input instead of a physical capture. We used that alternative and stopped the
+camera configuration work. No overlay was activated and no reboot occurred.
+
+Added --image and --output-dir options to frames.py. In file mode it decodes
+the supplied PNG with OpenCV, preserves its bytes, and runs the same grayscale,
+statistics, classification, and memory functions as live mode. Report metadata
+records supplied_image and SHA-256; no claim of a fresh capture is made.
+The original capture route and take_selfie.py remain available for later use.
+Added two image integration tests: the source is preserved without camera
+access, image moments agree with independent NumPy calculations, and undecodable
+input raises FrameError. All 21 tests passed locally. Jetson verification of
+this file-input revision is recorded below after deployment.
+
+The supplied image is 700 x 400, not the sample's 1920 x 1080; output numbers
+therefore differ appropriately. Final results and reproduction commands are
+in SUBMISSION.md. 1080p prelab predictions and the instructor example remain
+separate. This image completes the analysis task under the reported approval;
+physical CSI sensor detection remains unresolved and is not claimed fixed.

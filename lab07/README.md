@@ -1,3 +1,17 @@
+## Completed submission: approved image input
+
+See [SUBMISSION.md](SUBMISSION.md) for results, image, tests, and provenance.
+
+```bash
+python3 frames.py --image output/all_focus_s1_1.0_s2_3.0.png --output-dir output
+python3 -m unittest -v test_frames.py
+```
+
+The student reports TA approval to use this supplied image. Live camera
+capture is optional for this submission; its detection problem remains recorded.
+
+---
+
 # Lab 07 — What a frame costs before anything looks at it
 
 A 1920×1080 frame in NV12 (ISP native) is 3.1 MB; in RGB (tutorial native) it is 6.2 MB. At 30 fps that is 178 MiB/second before inference starts. MobileNetV2 is 300M MACs; one frame read as 32-bit words is worth 311M MAC-equivalents at 200:1 energy ratio. The frame costs more than the network. Can you move the conversion from the CPU to the ISP's video codec, and can you measure what it buys?

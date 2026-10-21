@@ -1,14 +1,59 @@
-# Lab 7
+# Lab 7 final submission
 
-- [Implemented functions](frames.py)
-- [Requirements and work log](IMPLEMENTATION_NOTES.md)
-- [Pre-lab predictions](prelab_predictions.json) and [generator](prelab.py)
-- [Tests](test_frames.py) and [local results](test-results.txt)
-- [Instructor reference artifacts](reference_output/)
+The TA approved using the supplied chessboard image, as reported by the student.
+The image below is the supplied input; it was not captured by our Jetson.
 
-The original camera pipeline, helpers, schema, and selfie example were provided.
-The eight frame/accounting/diagnostic functions are implemented in this branch.
-Actual capture artifacts belong in output/ once a connected camera is available.
+![TA-approved supplied input](output/all_focus_s1_1.0_s2_3.0.png)
 
-All 19 tests pass locally and on the Jetson. Camera capture remains pending:
-Argus reports no cameras available. See [hardware status](hardware_status.json).
+## Submitted files
+
+- [Eight implemented analysis functions and image/camera runner](frames.py)
+- [Generated image statistics and memory report](output/frame_report.json)
+- [Tests](test_frames.py) and [saved local results](test-results.txt)
+- [Work log and requirements review](IMPLEMENTATION_NOTES.md)
+- [Hardware status and approved alternative](hardware_status.json)
+- [1080p pre-lab predictions](prelab_predictions.json) (separate from this image)
+- [Instructor reference artifacts](reference_output/) (separate from our results)
+
+## Reproduce the submission
+
+From lab07 on the Jetson:
+
+    python3 frames.py --image output/all_focus_s1_1.0_s2_3.0.png --output-dir output
+    python3 -m unittest -v test_frames.py
+
+OpenCV and NumPy are needed for image analysis; the Jetson already has both.
+The math and diagnostic unit tests need only Python. Image integration tests
+skip if OpenCV/NumPy are unavailable. All 21 tests passed locally with both installed.
+
+## Results for the supplied image
+
+| Measurement | Result |
+|---|---:|
+| Dimensions | 700 x 400 |
+| Luma samples | 280,000 |
+| Classification | scene |
+| Minimum luma | 0.003922 |
+| Maximum luma | 0.960784 |
+| Mean luma | 0.366944 |
+| Population standard deviation | 0.221170 |
+| Spread | 0.956863 |
+| BGR bytes/frame | 840,000 |
+| NV12 bytes/frame | 420,000 |
+| BGR bytes/second at assumed 30 FPS | 25,200,000 |
+| NV12 bytes/second at assumed 30 FPS | 12,600,000 |
+| NV12 to BGR read + write | 1,260,000 |
+| RGB resize to 224 x 224 read + write | 990,528 |
+| Full-resolution uint8 to FP32 read + write | 4,200,000 |
+
+The report preserves the starter's three main sections. Metadata identifies
+input_source as supplied_image and records the original PNG SHA-256. Pixel
+statistics are computed from the decoded supplied image using OpenCV grayscale
+and normalized float32 luma. Memory rates are estimates at assumed FPS; no live
+camera throughput, latency, sensor health, or working camera feed is established.
+The scene label describes the image's brightness/contrast, not the local sensor.
+PNG disk file size differs from the uncompressed frame footprint.
+
+The physical camera troubleshooting is no longer a submission prerequisite
+under the student's reported TA approval. No camera overlay was activated and
+no reboot was performed. Earlier diagnostic evidence remains documented.

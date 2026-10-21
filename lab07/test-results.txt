@@ -1,3 +1,7 @@
+Image used              : C:\Users\Bre\AppData\Local\Temp\tmpm9id9yfd\all_focus_s1_1.0_s2_3.0.png (supplied_image)
+Analysis saved to       : C:\Users\Bre\AppData\Local\Temp\tmpm9id9yfd\frame_report.json
+Classification result   : SCENE (mean 0.3669, spread 0.9569. Exposed and structured.)
+
 test_bad_inputs (test_frames.FrameTests.test_bad_inputs) ... ok
 test_bandwidth (test_frames.FrameTests.test_bandwidth) ... ok
 test_black_priority (test_frames.FrameTests.test_black_priority) ... ok
@@ -17,8 +21,11 @@ test_single_and_constant (test_frames.FrameTests.test_single_and_constant) ... o
 test_stats_generator (test_frames.FrameTests.test_stats_generator) ... ok
 test_thresholds (test_frames.FrameTests.test_thresholds) ... ok
 test_unopened_camera_released (test_frames.FrameTests.test_unopened_camera_released) ... ok
+test_report_uses_original_image_without_camera (test_frames.SuppliedImageTests.test_report_uses_original_image_without_camera) ... ok
+test_unreadable_input (test_frames.SuppliedImageTests.test_unreadable_input) ... [ WARN:0@0.543] global loadsave.cpp:278 cv::findDecoder imread_('C:\Users\Bre\AppData\Local\Temp\tmpbe1dpwkt\missing.png'): can't open/read file: check file path/integrity
+ok
 
 ----------------------------------------------------------------------
-Ran 19 tests in 0.016s
+Ran 21 tests in 2.516s
 
 OK

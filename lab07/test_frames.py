@@ -124,5 +124,47 @@ class FrameTests(unittest.TestCase):
         camera.release.assert_called_once()
 
 
+class SuppliedImageTests(unittest.TestCase):
+    def test_report_uses_original_image_without_camera(self):
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            self.skipTest('OpenCV/NumPy required for image integration check')
+        import tempfile
+        import hashlib
+        from frames import main
+        root = Path(__file__).parent
+        image = root / 'output/all_focus_s1_1.0_s2_3.0.png'
+        with tempfile.TemporaryDirectory() as directory:
+            with patch('frames.grab_frame', side_effect=AssertionError('camera must not open')):
+                main(output_dir=directory, input_image=str(image))
+            destination=Path(directory)/image.name
+            self.assertEqual(destination.read_bytes(),image.read_bytes())
+            report=json.loads((Path(directory)/'frame_report.json').read_text())
+            meta=report['capture_metadata']
+            self.assertEqual(meta['input_source'],'supplied_image')
+            self.assertEqual((meta['width'],meta['height']),(700,400))
+            self.assertEqual(meta['image_sha256'],hashlib.sha256(image.read_bytes()).hexdigest())
+            gray=cv2.cvtColor(cv2.imread(str(image)),cv2.COLOR_BGR2GRAY).astype(np.float32)/255.
+            stats=report['frame_analysis']['stats']
+            self.assertEqual(stats['samples'],280000.)
+            self.assertAlmostEqual(stats['mean'],float(np.mean(gray,dtype=np.float64)),places=12)
+            self.assertAlmostEqual(stats['sd'],float(np.std(gray,dtype=np.float64)),places=10)
+            self.assertEqual(report['frame_analysis']['classification'],'scene')
+            self.assertEqual(report['memory_pricing']['bandwidth_bytes_per_sec']['bgr_live_stream'],25200000.)
+
+    def test_unreadable_input(self):
+        try:
+            import cv2
+        except ImportError:
+            self.skipTest('OpenCV required for image integration check')
+        import tempfile
+        from frames import main
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(FrameError):
+                main(output_dir=directory,input_image=str(Path(directory)/'missing.png'))
+
+
 if __name__=='__main__':
     unittest.main(verbosity=2)

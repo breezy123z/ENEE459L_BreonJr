@@ -13,5 +13,10 @@
   "fresh_image_produced": false,
   "fresh_scene_report_produced": false,
   "source": "SSH session: OpenCV build information, device enumeration, tests, and camera capture attempt",
-  "note": "This records environment checks; prelab_predictions.json contains computed quantities."
+  "note": "This records environment checks; prelab_predictions.json contains computed quantities.",
+  "submission_input": "TA-approved supplied image (approval reported by student)",
+  "camera_required_for_submission": false,
+  "camera_overlay_activated": false,
+  "reboot_performed": false,
+  "file_input_local_tests_passed": 21
 }

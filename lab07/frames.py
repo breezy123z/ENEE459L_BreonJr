@@ -7,6 +7,8 @@ from schema import BLACK_MAX, FLAT_SPREAD
 import time
 import json
 import math
+import hashlib
+import shutil
 from pathlib import Path
 
 class FrameError(ValueError):
@@ -212,6 +214,7 @@ def main(
     image_filename: str = "captured_frame.jpg",
     json_filename: str = "frame_report.json",
     target_fps: float = 30.0,
+    input_image: str | None = None,
 ) -> None:
     import cv2
     import numpy as np
@@ -222,13 +225,22 @@ def main(
     img_path = out_path / image_filename
     json_path = out_path / json_filename
 
-    # 1. Capture frame from hardware
-    pipeline_str = gstreamer_pipeline()
-    frame_bgr = grab_frame(pipeline_str)
+    # 1. Use the TA-approved image when supplied, or capture from the camera.
+    if input_image is not None:
+        source_path = Path(input_image)
+        frame_bgr = cv2.imread(str(source_path), cv2.IMREAD_COLOR)
+        if frame_bgr is None:
+            raise FrameError(f"could not decode image: {source_path}")
+        img_path = out_path / source_path.name
+        if source_path.resolve() != img_path.resolve():
+            shutil.copy2(source_path, img_path)
+        origin = "supplied_image"
+    else:
+        frame_bgr = grab_frame(gstreamer_pipeline())
+        if not cv2.imwrite(str(img_path), frame_bgr):
+            raise FrameError(f"could not save captured frame to {img_path}")
+        origin = "live_camera"
 
-    # 2. Save captured image to disk
-    if not cv2.imwrite(str(img_path), frame_bgr):
-        raise FrameError(f"could not save captured frame to {img_path}")
     height, width, _ = frame_bgr.shape
 
     # 3. Extract normalized luma/grayscale values in [0.0, 1.0] for classification
@@ -252,7 +264,9 @@ def main(
     # 6. Aggregate payload and write JSON
     payload: dict[str, Any] = {
         "capture_metadata": {
-            "saved_image_path": str(img_path.resolve()),
+            "saved_image_path": img_path.as_posix() if input_image is not None else str(img_path.resolve()),
+            "input_source": origin,
+            "image_sha256": hashlib.sha256(img_path.read_bytes()).hexdigest(),
             "width": width,
             "height": height,
             "channels": 3,
@@ -280,9 +294,15 @@ def main(
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=4)
 
-    print(f"Captured frame saved to : {img_path}")
+    print(f"Image used              : {img_path} ({origin})")
     print(f"Analysis saved to       : {json_path}")
     print(f"Classification result   : {classification.upper()} ({reason})")
 
 if __name__ == "__main__":
-    main(output_dir=str(Path(__file__).resolve().parent / "output"))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Analyze a live frame or a supplied image.")
+    parser.add_argument("--image", help="Use an existing image instead of opening the camera")
+    parser.add_argument("--output-dir", default=str(Path(__file__).resolve().parent / "output"))
+    args = parser.parse_args()
+    main(output_dir=args.output_dir, input_image=args.image)
