@@ -1,0 +1,23 @@
+test_bad_inputs (test_frames.FrameTests.test_bad_inputs) ... ok
+test_bandwidth (test_frames.FrameTests.test_bandwidth) ... ok
+test_black_priority (test_frames.FrameTests.test_black_priority) ... ok
+test_capture_releases_on_failure (test_frames.FrameTests.test_capture_releases_on_failure) ... ok
+test_capture_releases_on_success (test_frames.FrameTests.test_capture_releases_on_success) ... ok
+test_conversion_read_write (test_frames.FrameTests.test_conversion_read_write) ... ok
+test_dark_structured (test_frames.FrameTests.test_dark_structured) ... ok
+test_flat_not_black (test_frames.FrameTests.test_flat_not_black) ... ok
+test_fractional_byte_roundup (test_frames.FrameTests.test_fractional_byte_roundup) ... ok
+test_payload_by_hand (test_frames.FrameTests.test_payload_by_hand) ... ok
+test_pipeline_headless (test_frames.FrameTests.test_pipeline_headless) ... ok
+test_reference_arithmetic (test_frames.FrameTests.test_reference_arithmetic) ... ok
+test_resize_and_normalize (test_frames.FrameTests.test_resize_and_normalize) ... ok
+test_scene (test_frames.FrameTests.test_scene) ... ok
+test_single_and_constant (test_frames.FrameTests.test_single_and_constant) ... ok
+test_stats_generator (test_frames.FrameTests.test_stats_generator) ... ok
+test_thresholds (test_frames.FrameTests.test_thresholds) ... ok
+test_unopened_camera_released (test_frames.FrameTests.test_unopened_camera_released) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.007s
+
+OK
