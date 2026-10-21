@@ -1,0 +1,186 @@
+{
+  "name": "toy_resnet",
+  "input_shape": [
+    3,
+    32,
+    32
+  ],
+  "precision": "fp32",
+  "source": "Synthetic Lab 4 toy_resnet layer descriptions; Assignment 2 computed MACs (not Lab 4 mock MACs)",
+  "notes": "Eight-layer demonstration, not a measured runtime or trained accuracy result.",
+  "layers": [
+    {
+      "name": "conv1",
+      "kind": "conv",
+      "in_shape": [
+        3,
+        32,
+        32
+      ],
+      "out_shape": [
+        16,
+        32,
+        32
+      ],
+      "kernel": [
+        3,
+        3
+      ],
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": []
+    },
+    {
+      "name": "bn1",
+      "kind": "bn",
+      "in_shape": [
+        16,
+        32,
+        32
+      ],
+      "out_shape": [
+        16,
+        32,
+        32
+      ],
+      "kernel": null,
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": []
+    },
+    {
+      "name": "relu1",
+      "kind": "relu",
+      "in_shape": [
+        16,
+        32,
+        32
+      ],
+      "out_shape": [
+        16,
+        32,
+        32
+      ],
+      "kernel": null,
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": []
+    },
+    {
+      "name": "res_conv",
+      "kind": "conv",
+      "in_shape": [
+        16,
+        32,
+        32
+      ],
+      "out_shape": [
+        16,
+        32,
+        32
+      ],
+      "kernel": [
+        3,
+        3
+      ],
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": [
+        "relu1"
+      ]
+    },
+    {
+      "name": "add1",
+      "kind": "add",
+      "in_shape": [
+        16,
+        32,
+        32
+      ],
+      "out_shape": [
+        16,
+        32,
+        32
+      ],
+      "kernel": null,
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": [
+        "relu1",
+        "res_conv"
+      ]
+    },
+    {
+      "name": "pool",
+      "kind": "pool",
+      "in_shape": [
+        16,
+        32,
+        32
+      ],
+      "out_shape": [
+        16,
+        1,
+        1
+      ],
+      "kernel": null,
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": []
+    },
+    {
+      "name": "flatten",
+      "kind": "flatten",
+      "in_shape": [
+        16,
+        1,
+        1
+      ],
+      "out_shape": [
+        16
+      ],
+      "kernel": null,
+      "stride": 1,
+      "groups": 1,
+      "bias": false,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": []
+    },
+    {
+      "name": "fc",
+      "kind": "linear",
+      "in_shape": [
+        16
+      ],
+      "out_shape": [
+        10
+      ],
+      "kernel": null,
+      "stride": 1,
+      "groups": 1,
+      "bias": true,
+      "weight_dtype": "fp32",
+      "act_dtype": "fp32",
+      "reads": []
+    }
+  ]
+}

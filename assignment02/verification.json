@@ -1,0 +1,13 @@
+{
+  "tests_passed": 15,
+  "source_pdf": "Assign2.pdf",
+  "source_pdf_sha256": "0502270d2b39a3765cf0dc626ec834632724b99332d52cabf363811d06ad81b0",
+  "results": "computed, not measured",
+  "report_pages": 6,
+  "charts": 4,
+  "totals_verified_from_csv": true,
+  "example_model": "Lab 4 synthetic toy_resnet",
+  "total_flops": 5603648,
+  "total_bytes": 745360.0,
+  "arithmetic_intensity": 7.518
+}

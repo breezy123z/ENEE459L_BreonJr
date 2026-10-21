@@ -1,0 +1,20 @@
+test_aggregate_is_not_mean_of_ratios (test_arithmetic.IntensityTests.test_aggregate_is_not_mean_of_ratios) ... ok
+test_bad_dependencies_and_duplicates (test_arithmetic.IntensityTests.test_bad_dependencies_and_duplicates) ... ok
+test_bn_fp32_buffers (test_arithmetic.IntensityTests.test_bn_fp32_buffers) ... ok
+test_dual_input_add (test_arithmetic.IntensityTests.test_dual_input_add) ... ok
+test_empty_and_zero_byte_graph (test_arithmetic.IntensityTests.test_empty_and_zero_byte_graph) ... ok
+test_explicit_producer_not_previous (test_arithmetic.IntensityTests.test_explicit_producer_not_previous) ... ok
+test_external_input_dtype (test_arithmetic.IntensityTests.test_external_input_dtype) ... ok
+test_fractional_int4_storage (test_arithmetic.IntensityTests.test_fractional_int4_storage) ... ok
+test_grouped_convolution (test_arithmetic.IntensityTests.test_grouped_convolution) ... ok
+test_linear_hand_calculation (test_arithmetic.IntensityTests.test_linear_hand_calculation) ... ok
+test_mixed_add_uses_handout_first_dtype (test_arithmetic.IntensityTests.test_mixed_add_uses_handout_first_dtype) ... ok
+test_previous_producer_dtype (test_arithmetic.IntensityTests.test_previous_producer_dtype) ... ok
+test_record_contract (test_arithmetic.IntensityTests.test_record_contract) ... ok
+test_relu_zero_flops_retained (test_arithmetic.IntensityTests.test_relu_zero_flops_retained) ... ok
+test_supplied_mac_helper_is_used (test_arithmetic.IntensityTests.test_supplied_mac_helper_is_used) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.004s
+
+OK
