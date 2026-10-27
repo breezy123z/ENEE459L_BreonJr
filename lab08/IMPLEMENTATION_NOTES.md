@@ -19,20 +19,22 @@ October 27, 2026. Handout dated October 28; instructor revision d450ffe.
 7. Hysteresis uses full 8-connected propagation from strong pixels, rather
    than a single raster pass. This follows the task's connectivity goal and
    preserves weak chains regardless of traversal order. Final map is 0/255.
-8. Added 13 independent tests covering NMS, all angle sectors, edge borders,
+8. Added 15 independent tests covering NMS, all angle sectors, edge borders,
    inclusive thresholds, reverse-order weak chains, diagonal connectivity,
    blank images, and a synthetic step edge.
 9. The input and sample images are instructor-provided (1920 x 1440). No
    camera capture is needed and no new personal photograph was taken.
 10. Jetson already has NumPy, SciPy and Pillow. ONNX Runtime was missing;
-    setup attempted in /home/student/lab08-env with system-site-packages,
-    keeping the previous CUDA PyTorch installation separate.
+    venv creation failed because ensurepip is absent. Instead installed ONNX
+    Runtime and missing lightweight dependencies with --no-deps into
+    /home/student/lab08-deps, leaving system NumPy/SciPy/PyTorch unchanged.
+    run_lab08.sh adds this isolated folder to PYTHONPATH.
 
 ## Run
 
     cd /home/student/ENEE459L/lab08
-    /home/student/lab08-env/bin/python detect_face.py
-    /home/student/lab08-env/bin/python -m unittest -v test_detect_face.py
+    sh run_lab08.sh
+    sh run_lab08.sh -m unittest -v test_detect_face.py
 
 Outputs: output_detected.png, edges_scipy.png, results.json. Session providers
 are recorded from ONNX Runtime; a CPU run must not be described as CUDA.

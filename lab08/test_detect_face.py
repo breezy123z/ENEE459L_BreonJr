@@ -87,4 +87,51 @@ class VisionTests(unittest.TestCase):
             self.assertEqual(np.count_nonzero(edges[:,22:]),0)
 
 
+class FaceInferenceTests(unittest.TestCase):
+    def test_preprocess_scale_and_annotation(self):
+        import sys
+        from types import SimpleNamespace
+        from detect_face import detect_faces
+        captured={}
+        class Session:
+            def __init__(self,*args,**kwargs): captured['providers']=kwargs['providers']
+            def get_inputs(self): return [SimpleNamespace(name='input')]
+            def get_providers(self): return ['CPUExecutionProvider']
+            def run(self,names,feed):
+                captured['tensor']=feed['input']
+                return [np.array([[[.1,.9],[.8,.2]]],np.float32),
+                        np.array([[[.2,.25,1.,1.],[0,0,.1,.1]]],np.float32)]
+        fake=SimpleNamespace(SessionOptions=lambda:SimpleNamespace(),
+                             get_available_providers=lambda:['CPUExecutionProvider'],
+                             InferenceSession=Session)
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'face.png'; output=Path(tmp)/'out.png'
+            Image.new('RGB',(10,8),(127,127,127)).save(source)
+            with patch.dict(sys.modules,{'onnxruntime':fake}): result=detect_faces(source,output)
+            self.assertTrue(output.exists())
+            self.assertEqual(captured['tensor'].shape,(1,3,240,320))
+            self.assertEqual(captured['tensor'].dtype,np.float32)
+            self.assertEqual(float(captured['tensor'].max()),0.)
+            self.assertEqual(result['faces'][0]['box_xyxy'],[2,2,9,7])
+            self.assertEqual(len(result['faces']),1)
+            self.assertEqual(result['providers'],['CPUExecutionProvider'])
+            self.assertEqual(Image.open(output).size,(10,8))
+
+    def test_no_face_candidates(self):
+        import sys
+        from types import SimpleNamespace
+        from detect_face import detect_faces
+        fake_session=SimpleNamespace(get_inputs=lambda:[SimpleNamespace(name='x')],
+            get_providers=lambda:['CPUExecutionProvider'],
+            run=lambda *args:[np.array([[[1.,0.]]],np.float32),np.zeros((1,1,4),np.float32)])
+        fake=SimpleNamespace(SessionOptions=lambda:SimpleNamespace(),
+            get_available_providers=lambda:['CPUExecutionProvider'],
+            InferenceSession=lambda *a,**k:fake_session)
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'in.png'; Image.new('RGB',(4,4)).save(path)
+            with patch.dict(sys.modules,{'onnxruntime':fake}):
+                result=detect_faces(path,Path(tmp)/'out.png')
+            self.assertEqual(result['faces'],[])
+
+
 if __name__=='__main__': unittest.main(verbosity=2)
