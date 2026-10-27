@@ -54,10 +54,10 @@ class VisionTests(unittest.TestCase):
         out=non_maximum_suppression(np.ones((4,4)),np.zeros((4,4)))
         self.assertTrue(np.all(out[[0,-1],:]==0)); self.assertTrue(np.all(out[:,[0,-1]]==0))
 
-    def test_hysteresis_transitive_reverse_chain(self):
+    def test_hysteresis_handout_single_pass_order(self):
         img=np.zeros((5,7)); img[2,1:5]=40; img[2,5]=100
         out=hysteresis_thresholding(img,20,60)
-        np.testing.assert_array_equal(out[2,1:6],np.full(5,255))
+        np.testing.assert_array_equal(out[2,1:6],[0,0,0,255,255])
         self.assertEqual(set(np.unique(out)),{0,255})
 
     def test_hysteresis_diagonal_and_isolated(self):

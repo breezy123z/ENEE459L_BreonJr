@@ -1,6 +1,5 @@
 """Lab 8: ONNX face detection and SciPy/Pillow Canny, without OpenCV."""
 from pathlib import Path
-from collections import deque
 import json
 import numpy as np
 from PIL import Image, ImageDraw
@@ -121,27 +120,22 @@ def non_maximum_suppression(magnitude, angle):
 
 
 def hysteresis_thresholding(img, low_thresh, high_thresh):
-    """Keep strong pixels and all 8-connected chains of weak pixels."""
+    """Apply the handout's single-pass, 8-neighbor weak-edge promotion."""
     values = np.asarray(img)
     if values.ndim != 2 or not 0 <= low_thresh <= high_thresh:
         raise ValueError("expected a 2D map and 0 <= low <= high")
     result = np.zeros(values.shape, dtype=np.uint8)
     weak = (values >= low_thresh) & (values < high_thresh)
-    strong = values >= high_thresh
     result[weak] = 50
-    result[strong] = 255
-    queue = deque(map(tuple, np.argwhere(strong)))
+    result[values >= high_thresh] = 255
 
-    # Propagation is independent of raster order and clips windows at borders.
+    # Inspect weak pixels once in row-major order, as in the supplied procedure.
+    # Earlier promotions may help later pixels; this is not full graph tracking.
     height, width = values.shape
-    while queue:
-        i, j = queue.popleft()
-        for y in range(max(0, i - 1), min(height, i + 2)):
-            for x in range(max(0, j - 1), min(width, j + 2)):
-                if result[y, x] == 50:
-                    result[y, x] = 255
-                    queue.append((y, x))
-    result[result == 50] = 0
+    for i, j in np.argwhere(weak):
+        neighbors = result[max(0, i - 1):min(height, i + 2),
+                           max(0, j - 1):min(width, j + 2)]
+        result[i, j] = 255 if np.any(neighbors == 255) else 0
     return result
 
 

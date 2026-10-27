@@ -16,9 +16,10 @@ October 27, 2026. Handout dated October 28; instructor revision d450ffe.
 6. Canny uses float32 grayscale, Gaussian sigma 1.4, the exact Sobel kernels
    from the handout, 0-255 magnitude scaling, four-direction thinning, and
    dual thresholds 20/60. Flat input avoids division by zero.
-7. Hysteresis uses full 8-connected propagation from strong pixels, rather
-   than a single raster pass. This follows the task's connectivity goal and
-   preserves weak chains regardless of traversal order. Final map is 0/255.
+7. Hysteresis follows the handout's single row-major pass over weak pixels,
+   inspecting an 8-connected neighborhood, promoting if a strong neighbor is
+   present and suppressing otherwise. This exactly reproduces the sample edge
+   image. The method can depend on scan order; it is not full graph tracking.
 8. Added 15 independent tests covering NMS, all angle sectors, edge borders,
    inclusive thresholds, reverse-order weak chains, diagonal connectivity,
    blank images, and a synthetic step edge.
@@ -41,3 +42,12 @@ are recorded from ONNX Runtime; a CPU run must not be described as CUDA.
 Face localization does not identify people. Canny output quality depends on
 thresholds, resize/smoothing conventions, and connectivity; comparisons with
 the supplied samples are reported after execution, not assumed identical.
+
+## Hysteresis comparison resolved
+
+Initially tested full 8-connected propagation, which produced 24,010 edge
+pixels. It retained all 16,508 reference edges plus 7,502 additional weak-chain
+pixels. Tested the handout's literal single-pass procedure: it produced 16,508
+edge pixels and matched sample_edges_scipy.png pixel-for-pixel. The final default
+therefore uses that procedure. The order-dependent weak-chain test documents
+its limitation instead of claiming complete transitive connectivity.
