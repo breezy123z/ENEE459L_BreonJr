@@ -55,7 +55,7 @@ def detect_faces(image_path, output_path="output_detected.png", conf_threshold=0
     with Image.open(image_path) as source:
         image = source.convert("RGB")
     width, height = image.size
-    resized = image.resize((320, 240), Image.Resampling.BILINEAR)
+    resized = image.resize((320, 240), getattr(Image, "Resampling", Image).BILINEAR)
     pixels = (np.asarray(resized, dtype=np.float32) - 127.0) / 128.0
     tensor = np.ascontiguousarray(pixels.transpose(2, 0, 1)[None, ...])
 
