@@ -1,3 +1,18 @@
+## Completed solution on the Jetson
+
+```bash
+cd /home/student/ENEE459L/lab08
+sh run_lab08.sh
+sh run_lab08.sh -m unittest -v test_detect_face.py
+sh run_lab08.sh compare_outputs.py
+```
+
+The launcher uses /home/student/lab08-deps for the optional ONNX Runtime CPU
+package and compatible NumPy, leaving system packages and CUDA PyTorch unchanged.
+See IMPLEMENTATION_NOTES.md for implementation and actual verification results.
+
+---
+
 # Lab 08 — Face detection
 
 This laboratory exercise focuses on building an end-to-end edge AI vision pipeline on resource-constrained embedded hardware, specifically the NVIDIA Jetson Nano. Rather than relying on high-level, black-box vision libraries, this lab emphasizes understanding and implementing both low-level algorithmic image processing (such as custom Canny edge detection from scratch) and deep-learning-based computer vision (using lightweight ONNX neural network inference for real-time face detection).
