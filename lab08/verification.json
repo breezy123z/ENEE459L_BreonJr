@@ -1,0 +1,14 @@
+{
+  "verified_date": "2026-10-28",
+  "platform": "Jetson Orin Nano Super",
+  "tests_passed": 15,
+  "tests_runtime_seconds": 0.054,
+  "execution_provider": "CPUExecutionProvider",
+  "input": "face.jpg",
+  "model": "version-RFB-320.onnx",
+  "faces_detected": 1,
+  "edge_pixels": 16508,
+  "edge_reference_exact_pixel_match": true,
+  "new_camera_capture": false,
+  "model_sha256": "34cd7e60aeff28744c657de7a3dc64e872d506741de66987f3426f2b79f88017"
+}

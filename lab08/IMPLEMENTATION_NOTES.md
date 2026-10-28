@@ -51,3 +51,30 @@ pixels. Tested the handout's literal single-pass procedure: it produced 16,508
 edge pixels and matched sample_edges_scipy.png pixel-for-pixel. The final default
 therefore uses that procedure. The order-dependent weak-chain test documents
 its limitation instead of claiming complete transitive connectivity.
+
+## Final Jetson verification - October 28, 2026
+
+All 15 tests passed on the Jetson in 0.054 seconds. Executed the complete
+pipeline with the supplied face.jpg and ONNX model. Output image dimensions
+remain 1920 x 1440. One face was detected at confidence 0.9998503923416138,
+box [829, 224, 1140, 752]. Session provider: CPUExecutionProvider.
+The optional ONNX package is the CPU wheel; no CUDA acceleration is claimed.
+
+Final Canny output has 16,508 edge pixels and is pixel-for-pixel identical to
+sample_edges_scipy.png (edge IoU/F1 and pixel agreement all 1.0).
+The predicted face box has IoU approximately 0.993 against the green outline
+inferred from the instructor sample. Annotation colors/text differ. The sample
+is an example, not labeled ground truth, so neither comparison is a dataset
+accuracy claim. Both generated images were inspected visually.
+
+Dependency setup: system NumPy remains 1.21.5; the isolated lab08-deps contains
+NumPy 1.24.4 to satisfy ONNX Runtime while remaining compatible with system
+SciPy 1.8.0. Pillow 9.0.1 is supported through a resize-enum fallback. ONNX
+Runtime 1.23.2 and its missing lightweight dependencies are separate from
+system site-packages. Existing CUDA-enabled PyTorch was not changed.
+
+The first venv attempt failed due to missing ensurepip; no venv is used.
+The first inference tests exposed the old Pillow API and were repaired before
+final execution. The earlier full-connectivity edge experiment is not the
+submitted algorithm. requirements-jetson-extra.txt reproduces the successful
+extra dependency folder. All final images, reports, and test logs are included.

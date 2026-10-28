@@ -1,0 +1,34 @@
+{
+  "edge_comparison": {
+    "reference_edge_pixels": 16508,
+    "actual_edge_pixels": 16508,
+    "exact_pixel_match": true,
+    "intersection_pixels": 16508,
+    "union_pixels": 16508,
+    "edge_iou": 1.0,
+    "edge_f1": 1.0,
+    "pixel_agreement_fraction": 1.0
+  },
+  "note": "Reference-image agreement is not accuracy on labeled data; threshold and implementation details can differ.",
+  "face_comparison": {
+    "sample_outline_xyxy": [
+      828,
+      225,
+      1140,
+      753
+    ],
+    "actual_face_count": 1,
+    "boxes": [
+      {
+        "actual_box": [
+          829,
+          224,
+          1140,
+          752
+        ],
+        "iou_against_sample_outline": 0.9930322877725739
+      }
+    ],
+    "method": "Sample outline inferred from long green borders; not supplied ground-truth boxes."
+  }
+}

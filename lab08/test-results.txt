@@ -1,0 +1,23 @@
+test_no_face_candidates (test_detect_face.FaceInferenceTests) ... ok
+test_preprocess_scale_and_annotation (test_detect_face.FaceInferenceTests) ... /home/student/ENEE459L/lab08/test_detect_face.py:118: ResourceWarning: unclosed file <_io.BufferedReader name='/tmp/tmpjerz6y0l/out.png'>
+  self.assertEqual(Image.open(output).size,(10,8))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_angle_wrap_and_ties (test_detect_face.VisionTests) ... ok
+test_blank_canny_no_division_zero (test_detect_face.VisionTests) ... ok
+test_canny_step_edge (test_detect_face.VisionTests) ... ok
+test_directional_sectors (test_detect_face.VisionTests) ... ok
+test_edges_border_zero (test_detect_face.VisionTests) ... ok
+test_hysteresis_diagonal_and_isolated (test_detect_face.VisionTests) ... ok
+test_hysteresis_handout_single_pass_order (test_detect_face.VisionTests) ... ok
+test_nms_bad_inputs (test_detect_face.VisionTests) ... ok
+test_nms_duplicate_and_disjoint (test_detect_face.VisionTests) ... ok
+test_nms_empty_and_degenerate (test_detect_face.VisionTests) ... ok
+test_nms_exact_iou_boundary (test_detect_face.VisionTests) ... ok
+test_nms_topk_and_candidates (test_detect_face.VisionTests) ... ok
+test_threshold_inclusive (test_detect_face.VisionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.054s
+
+OK
