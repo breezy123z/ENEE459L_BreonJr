@@ -1,0 +1,27 @@
+test_absolute_tie (test_agreement.AgreementTests) ... ok
+test_bad_speedup (test_agreement.AgreementTests) ... ok
+test_bad_timings (test_agreement.AgreementTests) ... ok
+test_invalid_floor (test_agreement.AgreementTests) ... ok
+test_latency_generator_and_interpolation (test_agreement.AgreementTests) ... ok
+test_margin_boundary (test_agreement.AgreementTests) ... ok
+test_margin_invalid (test_agreement.AgreementTests) ... ok
+test_margin_negative_scores (test_agreement.AgreementTests) ... ok
+test_pair_validation (test_agreement.AgreementTests) ... ok
+test_relative_floor (test_agreement.AgreementTests) ... ok
+test_sample_report (test_agreement.AgreementTests) ... ok
+test_single_timing (test_agreement.AgreementTests) ... ok
+test_speedup (test_agreement.AgreementTests) ... ok
+test_top1_invalid_shapes (test_agreement.AgreementTests) ... ok
+test_top1_ties_and_first_mismatch (test_agreement.AgreementTests) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.006s
+
+OK
+Loaded input from: /home/student/ENEE459L/lab09/benchmark_input_data.json
+Results saved to:  /tmp/tmpd85ck1x9/results.json
+
+--- Summary ---
+max |a-b| = 0.03 at index 2; max relative = 0.5
+no decision flips: the smallest margin over 3 inputs is 0.1 and the deviation is 0.03
+Speedup (p50): 1.41x (4.20 ms saved)

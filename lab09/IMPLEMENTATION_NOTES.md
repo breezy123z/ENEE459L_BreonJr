@@ -15,7 +15,7 @@ The README references ELMS slides that are not included in the public repository
 5. Added two shared validation helpers to avoid silently truncating mismatched arrays and to reject non-finite scores, booleans, and empty rows.
 6. Added 15 unittest cases covering the full supplied report, error handling, interpolation, ties, denominator floors, mismatches, and margin boundaries.
 7. Tested locally. All sample fields match; floating-point fields allow a 1e-12 absolute tolerance because Python versions can sum floating-point values differently.
-8. Published solution9, updated the existing Jetson checkout, and ran the tests and supplied example there. Board evidence is saved in test-results.txt and run-results.txt.
+8. Published solution9, updated the existing Jetson checkout, and ran the tests and supplied example there. All 15 tests passed on the Jetson in 0.006 seconds. Its benchmark_results.json matches the instructor sample exactly, including floating-point values. Board evidence is saved in test-results.txt and run-results.txt.
 
 ## Functions written
 
