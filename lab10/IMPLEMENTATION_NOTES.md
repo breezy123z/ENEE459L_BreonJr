@@ -61,3 +61,7 @@ CaptureError, _positive_int, block_align, amplitude_from_dbfs, full_scale_range_
 | Capture choices named | 3 of 13 | Header supplies rate/depth/channels; ten handwritten choices are unknown |
 
 Do not fill those ten choices using guesses about the instructor's recording. For a new capture, fill session_template.json with actual observed settings, save it under another name, then pass it with --session.
+
+## Jetson verification
+
+All 23 tests passed on the Jetson in 0.199 seconds. The generated report matches the supplied reference exactly. Saved evidence: test-results.txt, run-results.txt, generated_test_voice_report.json, and audio-devices.txt. The recording remains the instructor sample; no new voice was captured.

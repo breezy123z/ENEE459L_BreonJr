@@ -1,0 +1,28 @@
+test_bad_amplitudes (test_capture.CaptureTests) ... ok
+test_bad_bits (test_capture.CaptureTests) ... ok
+test_bad_geometry (test_capture.CaptureTests) ... ok
+test_bad_payload (test_capture.CaptureTests) ... ok
+test_bits (test_capture.CaptureTests) ... ok
+test_blank_and_zero_metadata (test_capture.CaptureTests) ... ok
+test_complete_metadata (test_capture.CaptureTests) ... ok
+test_crest_undefined (test_capture.CaptureTests) ... ok
+test_dbfs (test_capture.CaptureTests) ... ok
+test_header_mismatch (test_capture.CaptureTests) ... ok
+test_level_boundaries (test_capture.CaptureTests) ... ok
+test_missing_header_field (test_capture.CaptureTests) ... ok
+test_non_pcm (test_capture.CaptureTests) ... ok
+test_padded_unknown_chunk (test_capture.CaptureTests) ... ok
+test_partial_frame (test_capture.CaptureTests) ... ok
+test_record_empty (test_capture.CaptureTests) ... ok
+test_rounding_and_custom_header (test_capture.CaptureTests) ... ok
+test_silence_and_clipping (test_capture.CaptureTests) ... ok
+test_stereo_24_bit (test_capture.CaptureTests) ... ok
+test_supplied_report (test_capture.CaptureTests) ... ok
+test_truncated_file (test_capture.CaptureTests) ... ok
+test_wav_size_stereo (test_capture.CaptureTests) ... ok
+test_wrong_stride (test_capture.CaptureTests) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.199s
+
+OK
