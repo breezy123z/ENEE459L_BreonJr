@@ -168,32 +168,34 @@ def header_consistency(
     header: dict[str, Any], audio: dict[str, Any]
 ) -> dict[str, Any]:
     if not isinstance(header, dict) or not isinstance(audio, dict):
-        raise CaptureError("header and audio must be dictionaries.")
-    for field in CHOICES_IN_HEADER:
+        raise CaptureError("header and audio must both be objects.")
+    mismatches = []
+    for field in ("sample_rate", "channels", "bit_depth"):
         if field not in header or field not in audio:
-            raise CaptureError(f"missing format field: {field}")
-        _positive_int(header[field], f"header.{field}")
-        _positive_int(audio[field], f"audio.{field}")
-    block_align(audio["channels"], audio["bit_depth"])
+            raise CaptureError(
+                f"{field!r} is missing from the header or the audio block; "
+                "nothing can be compared."
+            )
+        if header[field] != audio[field]:
+            mismatches.append({"field": field, "header": header[field],
+                               "audio": audio[field]})
     if "data_bytes" not in header:
-        raise CaptureError("header has no data_bytes.")
+        raise CaptureError("the header has no 'data_bytes'.")
     duration = duration_from_bytes(header["data_bytes"], header["sample_rate"],
                                    header["channels"], header["bit_depth"])
-    stated = audio.get("seconds")
-    if stated is not None and _finite_number(stated, "audio.seconds") < 0:
-        raise CaptureError("audio.seconds must be nonnegative.")
-    mismatches = [field for field in CHOICES_IN_HEADER
-                  if header[field] != audio[field]]
-
     return {"agree": not mismatches, "mismatches": mismatches,
-            "duration": duration, "stated_seconds": stated}
+            "duration": duration, "stated_seconds": float(audio.get("seconds", 0.0))}
 
 
 # 4. Use None for silence so JSON never needs negative infinity.
 def dbfs(amplitude: float) -> float | None:
     magnitude = _finite_number(amplitude, "amplitude")
-    if not 0 <= magnitude <= 1:
-        raise CaptureError("amplitude must be in [0, 1].")
+    if magnitude < 0:
+        raise CaptureError(
+            f"amplitude is {magnitude}. Levels here are magnitudes in [0, 1]; "
+            "a negative one is a raw sample, and the sign of a raw sample says "
+            "nothing about how loud it is."
+        )
     return None if magnitude == 0 else 20.0 * math.log10(magnitude)
 
 
@@ -203,25 +205,21 @@ def bits_in_use(peak_dbfs: float | None, bit_depth: int) -> float:
     if peak_dbfs is None:
         return 0.0
     level = _finite_number(peak_dbfs, "peak_dbfs")
-    if level > 0:
-        raise CaptureError("peak_dbfs must not exceed full scale (0 dBFS).")
     return max(0.0, bit_depth + level / DB_PER_BIT)
 
 
 # 6. Keep unclipped sample reports identical to the supplied reference.
 def level_sentence(level: dict[str, Any]) -> str:
     if level["silent"]:
-        return "digital silence (all samples are zero)"
-    def display(value):
-        return "undefined" if value is None else f"{value:.2f}"
-
-    sentence = (f"peak {display(level['peak_dbfs'])} dBFS, "
-                f"RMS {display(level['rms_dbfs'])} dBFS, "
-                f"crest {display(level['crest_db'])} dB")
+        return f"the capture is digitally silent: all {level['samples']} samples are zero"
+    parts = [f"peak {level['peak_dbfs']:.2f} dBFS"]
+    if level["rms_dbfs"] is not None:
+        parts.append(f"RMS {level['rms_dbfs']:.2f} dBFS")
+    if level["crest_db"] is not None:
+        parts.append(f"crest {level['crest_db']:.2f} dB")
     if level["clipped"]:
-        sentence += (f"; {level['clipped']} of {level['samples']} samples clipped "
-                     f"({100 * level['clip_rate']:.2f}%)")
-    return sentence
+        parts.append(f"{level['clipped']} samples at the rail ({100.0 * level['clip_rate']:.4f}%)")
+    return ", ".join(parts)
 
 
 # 7. Audit the capture.py checklist without inventing missing metadata.
@@ -233,10 +231,8 @@ def record_gaps(record: dict[str, Any]) -> dict[str, Any]:
         if key not in record:
             missing.append(key)
         else:
-            value = record[key]
-            empty = value is None or (isinstance(value, str) and not value.strip())
-            empty = empty or (isinstance(value, (list, tuple, dict, set)) and not value)
-            (blank if empty else present).append(key)
+            # Use the handout's literal string-based presence check.
+            (blank if not str(record[key]).strip() else present).append(key)
 
     return {"present": present, "missing": missing, "blank": blank,
             "complete": not missing and not blank,
@@ -248,13 +244,13 @@ def record_gaps(record: dict[str, Any]) -> dict[str, Any]:
 # 8. Turn the audit into an actionable checklist summary.
 def record_sentence(gaps: dict[str, Any]) -> str:
     count = len(gaps["present"])
-    total = len(THIRTEEN_CHOICES)
+    total = count + len(gaps["missing"]) + len(gaps["blank"])
     if gaps["complete"]:
-        return (f"all {total} choices are named "
-                f"({len(gaps['in_header'])} in header, "
-                f"{len(gaps['hand_written'])} hand-written)")
+        return (f"all {total} choices are named, "
+                f"{len(gaps['in_header'])} of them also in the file header and "
+                f"{len(gaps['hand_written'])} of them nowhere else")
     parts = []
-    for field, label in (("missing", "missing"), ("blank", "blank")):
+    for field, label in (("missing", "missing"), ("blank", "present and empty")):
         keys = gaps[field]
         if keys:
             parts.append(f"{len(keys)} {label} ({', '.join(keys)})")

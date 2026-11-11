@@ -1,5 +1,6 @@
 """Tests for Lab 10 arithmetic, reports, and malformed WAV handling."""
 import json
+import math
 from pathlib import Path
 import struct
 import tempfile
@@ -46,7 +47,7 @@ class CaptureTests(unittest.TestCase):
         header = dict(sample_rate=44100, channels=1, bit_depth=16, data_bytes=88200)
         audio = dict(sample_rate=16000, channels=1, bit_depth=16, seconds=2)
         result = c.header_consistency(header, audio)
-        self.assertEqual(result['mismatches'], ['sample_rate'])
+        self.assertEqual(result['mismatches'], [{'field': 'sample_rate', 'header': 44100, 'audio': 16000}])
         self.assertFalse(result['agree'])
         self.assertEqual(result['duration']['seconds'], 1)
         self.assertEqual(result['stated_seconds'], 2)
@@ -62,7 +63,7 @@ class CaptureTests(unittest.TestCase):
         self.assertAlmostEqual(c.amplitude_from_dbfs(c.dbfs(.125)), .125)
 
     def test_bad_amplitudes(self):
-        for amplitude in [-.01, 1.01, True, '1', float('nan'), float('inf')]:
+        for amplitude in [-.01, True, '1', float('nan'), float('inf')]:
             with self.subTest(amplitude=amplitude), self.assertRaises(c.CaptureError):
                 c.dbfs(amplitude)
 
@@ -73,21 +74,21 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(c.bits_in_use(-200, 16), 0)
 
     def test_bad_bits(self):
-        for level, bits in [(1, 16), (float('nan'), 16), (None, 0), (False, 16)]:
+        for level, bits in [(True, 16), (float('nan'), 16), (None, 0), (False, 16)]:
             with self.subTest(level=level), self.assertRaises(c.CaptureError):
                 c.bits_in_use(level, bits)
 
     def test_silence_and_clipping(self):
         silent = c.level_report(0, 0, 0, 100)
-        self.assertIn('digital silence', c.level_sentence(silent))
+        self.assertEqual(c.level_sentence(silent), 'the capture is digitally silent: all 100 samples are zero')
         self.assertFalse(silent['usable'])
         hot = c.level_report(1, .5, 2, 100)
         self.assertTrue(hot['too_hot'])
-        self.assertIn('2 of 100 samples clipped (2.00%)', c.level_sentence(hot))
+        self.assertIn('2 samples at the rail (2.0000%)', c.level_sentence(hot))
         json.dumps(silent, allow_nan=False)
 
     def test_crest_undefined(self):
-        self.assertIn('crest undefined dB', c.level_sentence(c.level_report(.5, 0, 0, 10)))
+        self.assertEqual(c.level_sentence(c.level_report(.5, 0, 0, 10)), 'peak -6.02 dBFS')
 
     def test_level_boundaries(self):
         self.assertFalse(c.level_report(.01, .001, 0, 1000)['too_quiet'])
@@ -104,17 +105,25 @@ class CaptureTests(unittest.TestCase):
 
     def test_blank_and_zero_metadata(self):
         result = c.record_gaps({'device_name': '  ', 'capture_gain': 0,
-                                'operator_notes': None, 'filter_highpass_hz': False})
+                                'operator_notes': '', 'filter_highpass_hz': False})
         self.assertEqual(result['blank'], ['device_name', 'operator_notes'])
         self.assertIn('capture_gain', result['present'])
         self.assertIn('filter_highpass_hz', result['present'])
-        self.assertIn('2 blank (device_name, operator_notes)', c.record_sentence(result))
+        self.assertIn('2 present and empty (device_name, operator_notes)', c.record_sentence(result))
 
     def test_complete_metadata(self):
         result = c.record_gaps(dict.fromkeys(c.THIRTEEN_CHOICES, 'recorded'))
         self.assertTrue(result['complete'])
         self.assertIn('all 13 choices are named', c.record_sentence(result))
-        self.assertIn('3 in header, 10 hand-written', c.record_sentence(result))
+        self.assertIn('3 of them also in the file header and 10 of them nowhere else', c.record_sentence(result))
+
+    def test_handout_scalar_and_record_rules(self):
+        self.assertAlmostEqual(c.dbfs(2), 20 * math.log10(2))
+        self.assertGreater(c.bits_in_use(6, 16), 16)
+        self.assertEqual(c.record_gaps({'device_name': None})['present'], ['device_name'])
+        self.assertEqual(c.record_gaps({'device_name': []})['present'], ['device_name'])
+        header = dict(sample_rate=8000, channels=1, bit_depth=16, data_bytes=16)
+        self.assertEqual(c.header_consistency(header, header)['stated_seconds'], 0.0)
 
     def make_wav(self, folder, width=2, channels=1, values=None):
         path = Path(folder) / 'audio.wav'

@@ -12,7 +12,7 @@ python3 -m unittest -v test_capture.py
 
 The original test_voice_report.json remains untouched for comparison. Python's standard library is sufficient; no packages need installing.
 
-## Record your own audio when a microphone is connected
+## Optional future microphone recording
 
 ```bash
 arecord -l
@@ -27,8 +27,8 @@ Make a copy of session_template.json and fill all 13 values with actual observat
 python3 capture.py my_voice.wav --session my_session.json -o my_voice_report.json
 ```
 
-Do not submit the null template as completed metadata. Do not overwrite the instructor's test_voice.wav with your recording. Review any personal recording before adding it to a public repository.
+Do not submit the empty-string template as completed metadata. Do not overwrite the instructor's test_voice.wav with your recording. Review any personal recording before adding it to a public repository.
 
-The supplied sample is usable by the provided level thresholds, with no clipping and about 11.8 of 16 bits reached. Its ten handwritten capture choices are unknown. A fresh Jetson microphone recording is still pending: the initial device enumeration showed only internal NVIDIA APE interfaces, not a USB microphone.
+The supplied sample is usable by the provided level thresholds, with no clipping and about 11.8 of 16 bits reached. Its ten handwritten capture choices are unknown. At the user's direction, this submission uses the instructor-provided test because microphones are unavailable. A fresh recording is not part of this submission. Missing handwritten metadata is reported honestly rather than guessed.
 
 Branch: https://github.com/breezy123z/ENEE459L_BreonJr/tree/solution10/lab10

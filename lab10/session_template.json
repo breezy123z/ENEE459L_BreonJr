@@ -1,15 +1,15 @@
 {
-  "device_name": null,
-  "sample_rate": null,
-  "bit_depth": null,
-  "channels": null,
-  "capture_gain": null,
-  "mic_distance_cm": null,
-  "mic_polar_pattern": null,
-  "room_acoustic_treatment": null,
-  "ambient_noise_level": null,
-  "preamp_model": null,
-  "filter_highpass_hz": null,
-  "target_signal_type": null,
-  "operator_notes": null
+  "device_name": "",
+  "sample_rate": "",
+  "bit_depth": "",
+  "channels": "",
+  "capture_gain": "",
+  "mic_distance_cm": "",
+  "mic_polar_pattern": "",
+  "room_acoustic_treatment": "",
+  "ambient_noise_level": "",
+  "preamp_model": "",
+  "filter_highpass_hz": "",
+  "target_signal_type": "",
+  "operator_notes": ""
 }
