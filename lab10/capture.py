@@ -109,7 +109,26 @@ def level_report(
 
 
 
-# Edit these
+# Shared validation for the functions implemented below.
+def _finite_number(value: Any, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise CaptureError(f"{name} must be a finite number.")
+    try:
+        number = float(value)
+    except OverflowError as exc:
+        raise CaptureError(f"{name} is too large.") from exc
+    if not math.isfinite(number):
+        raise CaptureError(f"{name} must be finite.")
+    return number
+
+
+def _nonnegative_int(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise CaptureError(f"{name} must be a nonnegative integer.")
+    return value
+
+
+# 1. Work out the PCM frame count and file size.
 def wav_bytes(
     sample_rate: int,
     channels: int,
@@ -117,39 +136,129 @@ def wav_bytes(
     seconds: float,
     header_bytes: int = WAV_HEADER_BYTES,
 ) -> dict[str, Any]:
-    pass
+    rate = _positive_int(sample_rate, "sample_rate")
+    stride = block_align(channels, bit_depth)
+    duration = _finite_number(seconds, "seconds")
+    if duration < 0:
+        raise CaptureError("seconds must be nonnegative.")
+    header = _nonnegative_int(header_bytes, "header_bytes")
+    frames = round(_finite_number(rate * duration, "sample count"))
+    payload = frames * stride
+
+    return {"samples": frames, "block_align": stride,
+            "byte_rate": rate * stride, "data_bytes": payload,
+            "header_bytes": header, "total_bytes": header + payload}
 
 
+# 2. Count complete frames and expose leftover bytes.
 def duration_from_bytes(
     data_bytes: int, sample_rate: int, channels: int, bit_depth: int
 ) -> dict[str, Any]:
-    pass
+    payload = _nonnegative_int(data_bytes, "data_bytes")
+    rate = _positive_int(sample_rate, "sample_rate")
+    stride = block_align(channels, bit_depth)
+    samples, remainder = divmod(payload, stride)
+
+    return {"samples": samples, "seconds": samples / rate,
+            "remainder": remainder, "whole": remainder == 0}
 
 
+# 3. Compare the three format fields stored in the WAV header.
 def header_consistency(
     header: dict[str, Any], audio: dict[str, Any]
 ) -> dict[str, Any]:
-    pass
+    if not isinstance(header, dict) or not isinstance(audio, dict):
+        raise CaptureError("header and audio must be dictionaries.")
+    for field in CHOICES_IN_HEADER:
+        if field not in header or field not in audio:
+            raise CaptureError(f"missing format field: {field}")
+        _positive_int(header[field], f"header.{field}")
+        _positive_int(audio[field], f"audio.{field}")
+    block_align(audio["channels"], audio["bit_depth"])
+    if "data_bytes" not in header:
+        raise CaptureError("header has no data_bytes.")
+    duration = duration_from_bytes(header["data_bytes"], header["sample_rate"],
+                                   header["channels"], header["bit_depth"])
+    stated = audio.get("seconds")
+    if stated is not None and _finite_number(stated, "audio.seconds") < 0:
+        raise CaptureError("audio.seconds must be nonnegative.")
+    mismatches = [field for field in CHOICES_IN_HEADER
+                  if header[field] != audio[field]]
 
+    return {"agree": not mismatches, "mismatches": mismatches,
+            "duration": duration, "stated_seconds": stated}
+
+
+# 4. Use None for silence so JSON never needs negative infinity.
 def dbfs(amplitude: float) -> float | None:
-    pass
+    magnitude = _finite_number(amplitude, "amplitude")
+    if not 0 <= magnitude <= 1:
+        raise CaptureError("amplitude must be in [0, 1].")
+    return None if magnitude == 0 else 20.0 * math.log10(magnitude)
 
 
+# 5. Estimate resolution used by the measured peak.
 def bits_in_use(peak_dbfs: float | None, bit_depth: int) -> float:
     _positive_int(bit_depth, "bit_depth")
-    pass
+    if peak_dbfs is None:
+        return 0.0
+    level = _finite_number(peak_dbfs, "peak_dbfs")
+    if level > 0:
+        raise CaptureError("peak_dbfs must not exceed full scale (0 dBFS).")
+    return max(0.0, bit_depth + level / DB_PER_BIT)
 
 
+# 6. Keep unclipped sample reports identical to the supplied reference.
 def level_sentence(level: dict[str, Any]) -> str:
-    pass
+    if level["silent"]:
+        return "digital silence (all samples are zero)"
+    def display(value):
+        return "undefined" if value is None else f"{value:.2f}"
+
+    sentence = (f"peak {display(level['peak_dbfs'])} dBFS, "
+                f"RMS {display(level['rms_dbfs'])} dBFS, "
+                f"crest {display(level['crest_db'])} dB")
+    if level["clipped"]:
+        sentence += (f"; {level['clipped']} of {level['samples']} samples clipped "
+                     f"({100 * level['clip_rate']:.2f}%)")
+    return sentence
 
 
+# 7. Audit the capture.py checklist without inventing missing metadata.
 def record_gaps(record: dict[str, Any]) -> dict[str, Any]:
-    pass
+    if not isinstance(record, dict):
+        raise CaptureError("record must be a dictionary.")
+    present, missing, blank = [], [], []
+    for key in THIRTEEN_CHOICES:
+        if key not in record:
+            missing.append(key)
+        else:
+            value = record[key]
+            empty = value is None or (isinstance(value, str) and not value.strip())
+            empty = empty or (isinstance(value, (list, tuple, dict, set)) and not value)
+            (blank if empty else present).append(key)
+
+    return {"present": present, "missing": missing, "blank": blank,
+            "complete": not missing and not blank,
+            "in_header": list(CHOICES_IN_HEADER),
+            "hand_written": [key for key in THIRTEEN_CHOICES
+                             if key not in CHOICES_IN_HEADER]}
 
 
+# 8. Turn the audit into an actionable checklist summary.
 def record_sentence(gaps: dict[str, Any]) -> str:
-    pass
+    count = len(gaps["present"])
+    total = len(THIRTEEN_CHOICES)
+    if gaps["complete"]:
+        return (f"all {total} choices are named "
+                f"({len(gaps['in_header'])} in header, "
+                f"{len(gaps['hand_written'])} hand-written)")
+    parts = []
+    for field, label in (("missing", "missing"), ("blank", "blank")):
+        keys = gaps[field]
+        if keys:
+            parts.append(f"{len(keys)} {label} ({', '.join(keys)})")
+    return f"{count} of {total} choices are named; " + "; ".join(parts)
 
 
 # =====================================================================
@@ -157,48 +266,51 @@ def record_sentence(gaps: dict[str, Any]) -> str:
 # =====================================================================
 
 def _parse_wav(path: Path) -> tuple[dict[str, Any], bytes]:
-    """Reads the bare minimum WAV header and audio body."""
-    with open(path, "rb") as f:
-        riff = f.read(12)
-        if len(riff) < 12 or riff[:4] != b"RIFF" or riff[8:12] != b"WAVE":
-            raise CaptureError(f"{path.name} is not a valid RIFF/WAVE file.")
+    """Read PCM chunks and reject truncated or contradictory headers."""
+    content = path.read_bytes()
+    if len(content) < 12 or content[:4] != b"RIFF" or content[8:12] != b"WAVE":
+        raise CaptureError(f"{path.name} is not a valid RIFF/WAVE file.")
+    end = 8 + struct.unpack_from("<I", content, 4)[0]
+    if end < 12 or end > len(content):
+        raise CaptureError("RIFF length exceeds the available file or is invalid.")
 
-        header: dict[str, Any] = {}
-        data_bytes = b""
+    header = {}
+    data = None
+    offset = 12
+    while offset < end:
+        if offset + 8 > end:
+            raise CaptureError("truncated chunk header.")
+        chunk_id = content[offset:offset + 4]
+        size = struct.unpack_from("<I", content, offset + 4)[0]
+        start = offset + 8
+        stop = start + size
+        if stop + size % 2 > end:
+            raise CaptureError("chunk payload or padding is truncated.")
+        payload = content[start:stop]
+        if chunk_id == b"fmt ":
+            if header or size < 16:
+                raise CaptureError("duplicate or incomplete PCM format chunk.")
+            fmt, channels, rate, byte_rate, stride, bits = struct.unpack("<HHIIHH", payload[:16])
+            if fmt != 1:
+                raise CaptureError("only integer PCM WAV audio is supported.")
+            expected_stride = block_align(channels, bits)
+            _positive_int(rate, "sample_rate")
+            if stride != expected_stride or byte_rate != rate * stride:
+                raise CaptureError("header byte_rate or block_align contradicts the PCM format.")
+            header.update(audio_format=fmt, channels=channels, sample_rate=rate,
+                          byte_rate=byte_rate, block_align=stride, bit_depth=bits)
+        elif chunk_id == b"data":
+            if data is not None:
+                raise CaptureError("multiple data chunks are not supported.")
+            data = payload
+        offset = stop + size % 2
 
-        # Scan chunks
-        while True:
-            chunk_header = f.read(8)
-            if len(chunk_header) < 8:
-                break
-            chunk_id = chunk_header[:4]
-            (chunk_size,) = struct.unpack("<I", chunk_header[4:8])
-
-            if chunk_id == b"fmt ":
-                fmt_payload = f.read(chunk_size)
-                audio_format, channels, sample_rate, byte_rate, ba, bit_depth = (
-                    struct.unpack("<HHIIHH", fmt_payload[:16])
-                )
-                header["audio_format"] = audio_format
-                header["channels"] = channels
-                header["sample_rate"] = sample_rate
-                header["byte_rate"] = byte_rate
-                header["block_align"] = ba
-                header["bit_depth"] = bit_depth
-                # Skip padding if chunk is padded
-                if chunk_size % 2 == 1:
-                    f.seek(1, 1)
-            elif chunk_id == b"data":
-                header["data_bytes"] = chunk_size
-                data_bytes = f.read(chunk_size)
-                if chunk_size % 2 == 1:
-                    f.seek(1, 1)
-            else:
-                f.seek(chunk_size + (chunk_size % 2), 1)
-
-    if not header or not data_bytes:
-        raise CaptureError(f"Missing fmt or data chunk in {path.name}")
-    return header, data_bytes
+    if not header or not data:
+        raise CaptureError(f"Missing or empty fmt/data chunk in {path.name}.")
+    if len(data) % header["block_align"]:
+        raise CaptureError("PCM data ends in a partial frame.")
+    header["data_bytes"] = len(data)
+    return header, data
 
 
 def run_analysis(
@@ -319,6 +431,10 @@ def main() -> None:
         default=None,
         help="Path for output JSON file (default: <wav_filename>_report.json)",
     )
+    parser.add_argument(
+        "--session", type=Path, default=None,
+        help="Optional JSON file with the actual capture choices; never guess missing values.",
+    )
     args = parser.parse_args()
 
     input_file = Path(args.wav_path)
@@ -331,7 +447,12 @@ def main() -> None:
         else input_file.with_name(f"{input_file.stem}_report.json")
     )
 
-    results = run_analysis(input_file)
+    session = None
+    if args.session is not None:
+        session = json.loads(args.session.read_text(encoding="utf-8-sig"))
+        if not isinstance(session, dict):
+            raise CaptureError("session JSON must be an object.")
+    results = run_analysis(input_file, session_audio=session)
 
     with open(output_file, "w", encoding="utf-8") as out:
         json.dump(results, out, indent=2)
@@ -339,7 +460,7 @@ def main() -> None:
     print(f"Results written to: {output_file}")
     print(f"Sentence: {results['verdicts']['level_sentence']}")
     print(
-        f"Bits in use: {results['resolution']['bits_in_use']} of {results['wav_structure']['block_align'] * 8 // results['wav_structure']['block_align']} bits"
+        f"Bits in use: {results['resolution']['bits_in_use']} of {_parse_wav(input_file)[0]['bit_depth']} bits"
     )
 
 
