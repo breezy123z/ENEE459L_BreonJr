@@ -64,7 +64,7 @@ Do not fill those ten choices using guesses about the instructor's recording. Th
 
 ## Jetson verification
 
-All 23 tests passed on the Jetson in 0.199 seconds. The generated report matches the supplied reference exactly. Saved evidence: test-results.txt, run-results.txt, generated_test_voice_report.json, and audio-devices.txt. The recording remains the instructor sample; no new voice was captured.
+Final verification: all 24 tests passed on the Jetson in 0.209 seconds. The generated report matches the supplied reference exactly. Saved evidence: test-results.txt, run-results.txt, generated_test_voice_report.json, and audio-devices.txt. The recording remains the instructor sample; no new voice was captured.
 
 ## Final handout alignment
 

@@ -7,6 +7,7 @@ test_blank_and_zero_metadata (test_capture.CaptureTests) ... ok
 test_complete_metadata (test_capture.CaptureTests) ... ok
 test_crest_undefined (test_capture.CaptureTests) ... ok
 test_dbfs (test_capture.CaptureTests) ... ok
+test_handout_scalar_and_record_rules (test_capture.CaptureTests) ... ok
 test_header_mismatch (test_capture.CaptureTests) ... ok
 test_level_boundaries (test_capture.CaptureTests) ... ok
 test_missing_header_field (test_capture.CaptureTests) ... ok
@@ -23,6 +24,6 @@ test_wav_size_stereo (test_capture.CaptureTests) ... ok
 test_wrong_stride (test_capture.CaptureTests) ... ok
 
 ----------------------------------------------------------------------
-Ran 23 tests in 0.199s
+Ran 24 tests in 0.209s
 
 OK
