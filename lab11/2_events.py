@@ -342,16 +342,82 @@ def trade_sentence(trade: dict) -> str:
 #######################################################
 
 def k_of_n(flags, k: int, n: int) -> list:
-    pass
+    """Count positives in each trailing window, including short prefixes."""
+    seq = _flags(flags, "flags")
+    kk, nn = int(k), int(n)
+    if nn < 1:
+        raise EventError(f"n is {n!r}; a vote looks at at least one window.")
+    if kk < 1 or kk > nn:
+        raise EventError("k must be at least 1 and cannot exceed n.")
+    out = []
+    for i in range(len(seq)):
+        lo = max(0, i - nn + 1)
+        out.append(sum(1 for flag in seq[lo:i + 1] if flag) >= kk)
+    return out
+
 
 def hysteresis(values, enter: float, leave: float) -> list:
-    pass
+    """Latch on at enter and off only below leave."""
+    e, l = float(enter), float(leave)
+    for value, name in ((e, "enter"), (l, "leave")):
+        if value < 0 or value > 1:
+            raise EventError(f"{name} must be in [0, 1].")
+    if l > e:
+        raise EventError("leave cannot exceed enter.")
+    on = False
+    out = []
+    for score in _scores(values, "values"):
+        if on:
+            if score < l:
+                on = False
+        elif score >= e:
+            on = True
+        out.append(on)
+    return out
+
 
 def match_events(predicted_s, truth_s, collar_s: float) -> dict:
-    pass
+    """Match each truth to its nearest unused prediction within the collar."""
+    pred = _times(predicted_s, "predicted_s")
+    truth = _times(truth_s, "truth_s")
+    collar = float(collar_s)
+    if collar < 0:
+        raise EventError(f"collar_s is {collar}.")
+    used = [False] * len(pred)
+    matches = []
+    for t in truth:
+        best = None
+        for j, candidate in enumerate(pred):
+            if used[j]:
+                continue
+            distance = abs(candidate - t)
+            if distance <= collar and (best is None or distance < best[0]):
+                best = (distance, j)
+        if best is not None:
+            j = best[1]
+            used[j] = True
+            matches.append({"truth_s": t, "predicted_s": pred[j], "delta_s": pred[j] - t})
+    return {"matches": matches, "hits": len(matches),
+            "misses": len(truth) - len(matches),
+            "false_alarms": sum(1 for flag in used if not flag), "collar_s": collar}
+
 
 def refractory(flags, hop_s: float, refractory_s: float) -> list:
-    pass
+    """Mute rising edges relative to the last accepted onset."""
+    hop, ref = float(hop_s), float(refractory_s)
+    if hop <= 0:
+        raise EventError(f"hop_s is {hop_s!r}.")
+    if ref < 0:
+        raise EventError(f"refractory_s is {refractory_s!r}.")
+    out = []
+    last_t = None
+    for idx in rising_edges(flags):
+        t = idx * hop
+        if last_t is not None and t - last_t < ref:
+            continue
+        out.append(idx)
+        last_t = t
+    return out
 
 
 #######################################################
@@ -545,11 +611,8 @@ def main() -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return EXIT_MALFORMED
 
-    # Remove the four null stage keys before writing the JSON file
-    null_stage_keys = {"stream", "scores", "timing", "quiet"}
-    output_doc = {k: v for k, v in session_doc.items() if k not in null_stage_keys}
-
-    args.output.write_text(json.dumps(output_doc, indent=2) + "\n", encoding="utf-8")
+    # Preserve all required session fields, including stages not run here.
+    args.output.write_text(json.dumps(session_doc, indent=2) + "\n", encoding="utf-8")
     print(f"Saved Stage E events session JSON to {args.output}")
     return EXIT_OK
 

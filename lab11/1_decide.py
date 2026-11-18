@@ -260,21 +260,71 @@ def base_rate_sentence(pr: dict) -> str:
 #######################################################
 
 def confusion(values, labels, threshold: float) -> dict:
-    pass
+    """Count the four outcomes of an inclusive threshold."""
+    scores = _score_list(values, "values")
+    threshold = _check_score(threshold, "threshold")
+    lbls = []
+    for i, label in enumerate(labels):
+        if isinstance(label, bool) or label not in (0, 1):
+            raise DecideError(f"labels[{i}] is {label!r}; must be integer 0 or 1.")
+        lbls.append(int(label))
+    if len(scores) != len(lbls):
+        raise DecideError(f"values has {len(scores)} items and labels has {len(lbls)}.")
+
+    tp = fp = tn = fn = 0
+    for score, label in zip(scores, lbls):
+        if score >= threshold:
+            if label == 1:
+                tp += 1
+            else:
+                fp += 1
+        elif label == 1:
+            fn += 1
+        else:
+            tn += 1
+    return {"tp": tp, "fp": fp, "tn": tn, "fn": fn, "windows": len(scores)}
 
 
 def rates(cm: dict) -> dict:
-    pass
+    """Keep undefined ratios distinct from zero performance."""
+    tp, fp, tn, fn = cm["tp"], cm["fp"], cm["tn"], cm["fn"]
+    tpr = tp / (tp + fn) if tp + fn > 0 else None
+    fpr = fp / (fp + tn) if fp + tn > 0 else None
+    precision = tp / (tp + fp) if tp + fp > 0 else None
+    recall = tpr
+    if precision is not None and recall is not None and precision + recall > 0:
+        f1 = 2.0 * precision * recall / (precision + recall)
+    elif precision == 0.0 and recall == 0.0:
+        f1 = 0.0
+    else:
+        f1 = None
+    return {"tpr": tpr, "fpr": fpr, "precision": precision, "recall": recall, "f1": f1}
 
 
 def precision_at_base_rate(
-    tpr: float,
-    fpr: float,
-    events_per_hour: int,
-    positives_per_event: int,
-    hop_s: float,
+    tpr: float, fpr: float, events_per_hour: int,
+    positives_per_event: int, hop_s: float,
 ) -> dict:
-    pass
+    """Estimate precision when most decisions are negative."""
+    t_rate = _check_score(tpr, "tpr")
+    f_rate = _check_score(fpr, "fpr")
+    hop = _check_pos(hop_s, "hop_s")
+    if isinstance(events_per_hour, bool) or not isinstance(events_per_hour, int) or events_per_hour < 0:
+        raise DecideError("events_per_hour must be a nonnegative integer.")
+    if isinstance(positives_per_event, bool) or not isinstance(positives_per_event, int) or positives_per_event <= 0:
+        raise DecideError("positives_per_event must be a positive integer.")
+    decisions = SECONDS_PER_HOUR / hop
+    positives = events_per_hour * positives_per_event
+    if positives > decisions:
+        raise DecideError("positives exceed total decisions per hour.")
+    negatives = decisions - positives
+    expected_tp = t_rate * positives
+    expected_fp = f_rate * negatives
+    denom = expected_tp + expected_fp
+    return {"positives": positives, "negatives": negatives,
+            "expected_tp": expected_tp, "expected_fp": expected_fp,
+            "precision": expected_tp / denom if denom > 0 else None,
+            "base_rate": positives / decisions}
 
 
 #######################################################

@@ -2,7 +2,7 @@
 
 ## Status
 
-Fetched instructor commit f2c1d87 (adding lab 11) on November 18, 2026. Created solution11 from completed solution10, merged lab11, and preserved the untouched starter at ../lab11-original.tar locally and in Git history. Read all seven pages of Lab11_instructions.pdf and the repository README. No student functions have been implemented yet and no passing lab results are claimed.
+Fetched instructor commit f2c1d87 (adding lab 11) on November 18, 2026. Created solution11 from completed solution10, merged lab11, and preserved the untouched starter at ../lab11-original.tar locally and in Git history. Read all seven pages of Lab11_instructions.pdf and the repository README. The eight functions are now implemented and tested; see IMPLEMENTATION_NOTES.md for final results.
 
 ## Objective
 

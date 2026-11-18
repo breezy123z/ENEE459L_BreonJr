@@ -421,7 +421,32 @@ def exit_code(verdicts: list[dict[str, Any]]) -> int:
 #######################################################
 
 def _validate_plan(plan: Any) -> None:
-    pass
+    """Check the detector's configuration before processing audio."""
+    _need(plan, REQUIRED_PLAN, "plan")
+    _pos_int(plan["sample_rate"], "plan.sample_rate")
+    for key in ("k", "n"):
+        _pos_int(plan[key], f"plan.{key}")
+    if plan["k"] > plan["n"]:
+        raise SchemaError("plan.k cannot exceed plan.n.")
+
+    for key in ("block_ms", "window_s", "hop_s", "event_s", "infer_ms", "ft_per_hour_max"):
+        if _number(plan[key], f"plan.{key}") <= 0:
+            raise SchemaError(f"plan.{key} must be positive.")
+    _pos_int(plan["ring_blocks"], "plan.ring_blocks")
+    for key in ("refractory_s", "collar_s"):
+        if _number(plan[key], f"plan.{key}") < 0:
+            raise SchemaError(f"plan.{key} cannot be negative.")
+    for key in ("threshold", "enter", "leave"):
+        _score(plan[key], f"plan.{key}")
+    if plan["leave"] > plan["enter"]:
+        raise SchemaError("plan.leave cannot exceed plan.enter.")
+    if plan["hop_s"] > plan["window_s"]:
+        raise SchemaError("plan.hop_s cannot exceed plan.window_s.")
+
+    _need(plan["stated"], REQUIRED_STATED, "plan.stated")
+    for key in REQUIRED_STATED:
+        if _number(plan["stated"][key], f"plan.stated.{key}") <= 0:
+            raise SchemaError(f"plan.stated.{key} must be positive.")
 
 
 #######################################################
