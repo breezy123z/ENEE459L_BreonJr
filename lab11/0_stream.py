@@ -421,33 +421,55 @@ def exit_code(verdicts: list[dict[str, Any]]) -> int:
 #######################################################
 
 def _validate_plan(plan: Any) -> None:
-    """Check the detector's configuration before processing audio."""
     _need(plan, REQUIRED_PLAN, "plan")
     _pos_int(plan["sample_rate"], "plan.sample_rate")
-    for key in ("k", "n"):
-        _pos_int(plan[key], f"plan.{key}")
+    for k in ("k", "n"):
+        _pos_int(plan[k], f"plan.{k}")
     if plan["k"] > plan["n"]:
-        raise SchemaError("plan.k cannot exceed plan.n.")
-
-    for key in ("block_ms", "window_s", "hop_s", "event_s", "infer_ms", "ft_per_hour_max"):
-        if _number(plan[key], f"plan.{key}") <= 0:
-            raise SchemaError(f"plan.{key} must be positive.")
+        raise SchemaError(
+            f"plan.k is {plan['k']} of plan.n {plan['n']}. A rule that asks "
+            "for more agreeing windows than it looks at can never fire, and a "
+            "detector that never fires has a false-trigger rate of zero."
+        )
+    for k in ("block_ms", "window_s", "hop_s", "event_s", "infer_ms",
+              "ft_per_hour_max"):
+        if _number(plan[k], f"plan.{k}") <= 0.0:
+            raise SchemaError(
+                f"plan.{k} is {plan[k]!r}. Every duration and every budget in "
+                "the plan is positive; a zero here is a field that was left "
+                "for later and then shipped."
+            )
     _pos_int(plan["ring_blocks"], "plan.ring_blocks")
-    for key in ("refractory_s", "collar_s"):
-        if _number(plan[key], f"plan.{key}") < 0:
-            raise SchemaError(f"plan.{key} cannot be negative.")
-    for key in ("threshold", "enter", "leave"):
-        _score(plan[key], f"plan.{key}")
+    for k in ("refractory_s", "collar_s"):
+        if _number(plan[k], f"plan.{k}") < 0.0:
+            raise SchemaError(
+                f"plan.{k} is {plan[k]!r}. Zero is allowed and means the "
+                "mechanism is off; negative is a sign somebody flipped."
+            )
+    for k in ("threshold", "enter", "leave"):
+        _score(plan[k], f"plan.{k}")
     if plan["leave"] > plan["enter"]:
-        raise SchemaError("plan.leave cannot exceed plan.enter.")
+        raise SchemaError(
+            f"plan.leave is {plan['leave']} and plan.enter is {plan['enter']}. "
+            "Hysteresis leaves below where it enters. The other way round is "
+            "not a wider band, it is a detector that turns off before it has "
+            "turned on."
+        )
     if plan["hop_s"] > plan["window_s"]:
-        raise SchemaError("plan.hop_s cannot exceed plan.window_s.")
-
+        raise SchemaError(
+            f"plan.hop_s is {plan['hop_s']} against a window of "
+            f"{plan['window_s']}. A hop longer than the window skips audio "
+            "between decisions, and the samples in the gap were captured, "
+            "paid for and never looked at."
+        )
     _need(plan["stated"], REQUIRED_STATED, "plan.stated")
-    for key in REQUIRED_STATED:
-        if _number(plan["stated"][key], f"plan.stated.{key}") <= 0:
-            raise SchemaError(f"plan.stated.{key} must be positive.")
-
+    for k in REQUIRED_STATED:
+        if _number(plan["stated"][k], f"plan.stated.{k}") <= 0.0:
+            raise SchemaError(
+                f"plan.stated.{k} is {plan['stated'][k]!r}. These are three "
+                "numbers worked out on paper before the board was switched "
+                "on, and none of them is zero for any plan."
+            )
 
 #######################################################
 ######## Starting Main function #######################

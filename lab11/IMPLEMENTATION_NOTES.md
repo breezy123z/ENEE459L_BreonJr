@@ -8,7 +8,7 @@ Convert sliding-window audio scores into decisions and event onsets, check confi
 
 1. Fetched instructor main at f2c1d87, branched solution11 from solution10, and saved the untouched lab11 starter in Git and ../lab11-original.tar locally.
 2. Read the seven-page Lab 11 instructions and instructor README.
-3. Implemented the eight required functions in the three scripts, with short comments and spacing.
+3. Implemented seven functions and incorporated an existing Jetson edit implementing _validate_plan with detailed handout error messages. Preserved that file locally at ../jetson-lab11-0-stream-preserved.py and on the board in its backup directory.
 4. Updated 2_events.py to preserve the four required null stage keys when writing its session; the supplied starter removed them even though the sample includes them and schema.py requires them.
 5. Added test_lab11.py for invalid configurations, inclusive thresholds, undefined rates, rare-event arithmetic, partial vote windows, hysteresis, accepted-onset timing, event matching and the three sample reports.
 6. Ran all three scripts on the supplied WAV and compared their generated reports with the three provided samples. Values match after excluding generated timestamps and absolute source paths. See test-results.txt and output0/1/2_session.json for Jetson verification.
@@ -17,7 +17,7 @@ Convert sliding-window audio scores into decisions and event onsets, check confi
 
 | Function | What it does |
 |---|---|
-| _validate_plan | Validates plan keys, counts, durations, scores and the constraints k <= n, leave <= enter and hop <= window. |
+| _validate_plan (existing Jetson edit) | Validates plan keys, counts, durations, scores and the constraints k <= n, leave <= enter and hop <= window. |
 | confusion | Counts TP, FP, TN and FN using score >= threshold and checks score/label lengths. |
 | rates | Computes TPR, FPR, precision, recall and F1; returns None for undefined ratios. |
 | precision_at_base_rate | Estimates expected TP, FP and precision given hourly event frequency and decision hop. |
