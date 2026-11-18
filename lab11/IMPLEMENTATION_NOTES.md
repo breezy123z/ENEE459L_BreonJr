@@ -11,7 +11,7 @@ Convert sliding-window audio scores into decisions and event onsets, check confi
 3. Implemented seven functions and incorporated an existing Jetson edit implementing _validate_plan with detailed handout error messages. Preserved that file locally at ../jetson-lab11-0-stream-preserved.py and on the board in its backup directory.
 4. Updated 2_events.py to preserve the four required null stage keys when writing its session; the supplied starter removed them even though the sample includes them and schema.py requires them.
 5. Added test_lab11.py for invalid configurations, inclusive thresholds, undefined rates, rare-event arithmetic, partial vote windows, hysteresis, accepted-onset timing, event matching and the three sample reports.
-6. Ran all three scripts on the supplied WAV and compared their generated reports with the three provided samples. Values match after excluding generated timestamps and absolute source paths. See test-results.txt and output0/1/2_session.json for Jetson verification.
+6. Ran all three scripts on the supplied WAV and compared their generated reports with the three provided samples. Values match after excluding generated timestamps and absolute source paths. All 9 test groups passed on the Jetson in 0.021 seconds. See test-results.txt and output0/1/2_session.json for board verification.
 
 ## Functions written
 

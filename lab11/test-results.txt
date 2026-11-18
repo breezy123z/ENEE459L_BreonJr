@@ -1,0 +1,14 @@
+test_base_rate (test_lab11.Lab11Tests) ... ok
+test_confusion (test_lab11.Lab11Tests) ... ok
+test_hysteresis (test_lab11.Lab11Tests) ... ok
+test_match (test_lab11.Lab11Tests) ... ok
+test_plan (test_lab11.Lab11Tests) ... ok
+test_rates (test_lab11.Lab11Tests) ... ok
+test_reference_reports (test_lab11.Lab11Tests) ... ok
+test_refractory (test_lab11.Lab11Tests) ... ok
+test_vote (test_lab11.Lab11Tests) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.021s
+
+OK
